@@ -2,10 +2,30 @@
 title: "CPLN 675_Assignment3"
 author: "Riddhi Batra & Charlie Townsley"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: false
+    code_folding: hide
+    df_print: paged
+    theme: flatly
+    highlight: tango
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "https://penno365-my.sharepoint.com/:f:/r/personal/towns_upenn_edu/Documents/Classes/Classes_Sem4_2023Spring/CPLN%20675_Land%20Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data?csf=1&web=1&e=B3Uwoe")
+rm(list=ls())
+```
+
+```{r libraries, echo=FALSE}
+library(tidyverse)
+library(sf)
+```
+
+```{r load_data, warning = FALSE, message = FALSE, results = "hide"}
+
 ```
 
