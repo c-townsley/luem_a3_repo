@@ -14,10 +14,15 @@ output:
     highlight: tango
 ---
 
+1.1 Setup
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Hi
-knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+
+knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 rm(list=ls())
 ```
 
@@ -25,8 +30,66 @@ rm(list=ls())
 library(tidyverse)
 library(sf)
 ```
+```{r themes, warning = FALSE, message = FALSE, results = "hide"}
+
+mapTheme <- theme(plot.title =element_text(size=12),
+                  plot.subtitle = element_text(size=8),
+                  plot.caption = element_text(size = 6),
+                  axis.line=element_blank(),
+                  axis.text.x=element_blank(),
+                  axis.text.y=element_blank(),
+                  axis.ticks=element_blank(),
+                  axis.title.x=element_blank(),
+                  axis.title.y=element_blank(),
+                  panel.background=element_blank(),
+                  panel.border=element_blank(),
+                  panel.grid.major=element_line(colour = 'transparent'),
+                  panel.grid.minor=element_blank(),
+                  legend.direction = "vertical", 
+                  legend.position = "right",
+                  plot.margin = margin(1, 1, 1, 1, 'cm'),
+                  legend.key.height = unit(1, "cm"), legend.key.width = unit(0.2, "cm"))
+
+plotTheme <- theme(
+  plot.title =element_text(size=12),
+  plot.subtitle = element_text(size=8),
+  plot.caption = element_text(size = 6),
+  axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+  axis.text.y = element_text(size = 10),
+  axis.title.y = element_text(size = 10),
+  # Set the entire chart region to blank
+  panel.background=element_blank(),
+  plot.background=element_blank(),
+  #panel.border=element_rect(colour="#F0F0F0"),
+  # Format the grid
+  panel.grid.major=element_line(colour="#D0D0D0",size=.75),
+  axis.ticks=element_blank())
+```
+
 
 ```{r load_data, warning = FALSE, message = FALSE, results = "hide"}
 
+
+denver_boundary <-read_sf("Denver/Processed/denver_bound.shp")
+
+
 ```
+
+```{r create_fishnets, warning = FALSE, message = FALSE, results = "hide"}
+
+fishnet <- st_make_grid(denver_boundary,
+                        cellsize = 1320,
+                        square = TRUE) %>% 
+  .[denver_boundary] %>% 
+  st_sf() %>% 
+  mutate(uniqueID = rownames(.))
+
+ggplot()+
+  geom_sf(data = fishnet,
+          fill = "lightgrey")+
+  geom_sf(data = denver_boundary, 
+          color = "red", fill = "transparent")
+
+```
+
 
