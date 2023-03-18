@@ -17,7 +17,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Hi
-knitr::opts_knit$set(root.dir = "https://penno365-my.sharepoint.com/:f:/r/personal/towns_upenn_edu/Documents/Classes/Classes_Sem4_2023Spring/CPLN%20675_Land%20Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data?csf=1&web=1&e=B3Uwoe")
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 rm(list=ls())
 ```
 
