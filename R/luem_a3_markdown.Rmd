@@ -19,10 +19,8 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-# Hi
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
-
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 rm(list=ls())
 ```
 
@@ -30,6 +28,7 @@ rm(list=ls())
 library(tidyverse)
 library(sf)
 ```
+
 ```{r themes, warning = FALSE, message = FALSE, results = "hide"}
 
 mapTheme <- theme(plot.title =element_text(size=12),
@@ -68,18 +67,15 @@ plotTheme <- theme(
 
 
 ```{r load_data, warning = FALSE, message = FALSE, results = "hide"}
-
-
 denver_boundary <-read_sf("Denver/Processed/denver_bound.shp")
-
-
+calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND_LIMIT.shp")
 ```
 
-```{r create_fishnets, warning = FALSE, message = FALSE, results = "hide"}
+```{r create_fishnets_denver, warning = FALSE, message = FALSE, results = "hide"}
 
 denver_fishnet <- st_make_grid(denver_boundary,
                         cellsize = 1320,
-                        square = TRUE) %>% 
+                        square = FALSE) %>% 
   .[denver_boundary] %>% 
   st_sf() %>% 
   mutate(uniqueID = rownames(.))
@@ -92,4 +88,20 @@ ggplot()+
 
 ```
 
+```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
+
+calgary_fishnet <- st_make_grid(calgary_boundary,
+                        cellsize = 402.336,
+                        square = FALSE) %>% 
+  .[calgary_boundary] %>% 
+  st_sf() %>% 
+  mutate(uniqueID = rownames(.))
+
+ggplot()+
+  geom_sf(data = calgary_fishnet,
+          fill = "lightgrey")+
+  geom_sf(data = calgary_boundary, 
+          color = "red", fill = "transparent")
+
+```
 
