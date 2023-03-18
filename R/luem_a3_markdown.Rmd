@@ -77,7 +77,7 @@ denver_boundary <-read_sf("Denver/Processed/denver_bound.shp")
 
 ```{r create_fishnets, warning = FALSE, message = FALSE, results = "hide"}
 
-fishnet <- st_make_grid(denver_boundary,
+denver_fishnet <- st_make_grid(denver_boundary,
                         cellsize = 1320,
                         square = TRUE) %>% 
   .[denver_boundary] %>% 
@@ -85,7 +85,7 @@ fishnet <- st_make_grid(denver_boundary,
   mutate(uniqueID = rownames(.))
 
 ggplot()+
-  geom_sf(data = fishnet,
+  geom_sf(data = denver_fishnet,
           fill = "lightgrey")+
   geom_sf(data = denver_boundary, 
           color = "red", fill = "transparent")
