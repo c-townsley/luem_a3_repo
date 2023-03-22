@@ -122,8 +122,6 @@ ggplot()+
 
 ```
 
-<<<<<<< HEAD
-
 ```{r create_fishnets_denver_lulc, warning = FALSE, message = FALSE, results = "hide"}
 
 #I don't think this makes sense, just trying it out
@@ -146,7 +144,8 @@ ggplot()+
           color = "red", fill = "transparent")
 
 ```
-=======
+
+
 **Loading in Features from ArcGIS and Joining with the Fishnets**
 
 Calgary
