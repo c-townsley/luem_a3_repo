@@ -25,9 +25,10 @@ The purpose of this assignment is to.....
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 ```
@@ -120,6 +121,8 @@ ggplot()+
   geom_sf(data = calgary_boundary, 
           color = "red", fill = "transparent")
 
+st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
+
 ```
 
 ```{r create_fishnets_denver_lulc, warning = FALSE, message = FALSE, results = "hide"}
@@ -149,6 +152,24 @@ ggplot()+
 **Loading in Features from ArcGIS and Joining with the Fishnets**
 
 Calgary
+
+```{r join engineered features to calg fishnet}
+#load in cleaned fishnet with partial cells removed
+calgary_fishnet <-  read_sf("Calgary/Processed/calgary_fishnet_nozeros/calgary_fishnet_nozeros.shp")
+
+#load in engineered features for calgary and process
+calg_inund <- read_csv("Calgary/Processed/zonalstats_tables/calg_inundation_sum.csv") %>%
+  rename(inund_sum = SUM) %>% 
+  dplyr::select(uniqueID, inund_sum) %>% 
+  mutate(inund_sum = ifelse(inund_sum >= 16, 1, 0)) #turn inundation sum values into binary (threshold = 16)
+
+#land cover
+
+#flow accumulation
+
+#distance to rivers
+```
+
 
 Denver
 ```{r get_variables_denver, warning = FALSE, message = FALSE, results = "hide"}
@@ -188,4 +209,4 @@ denver_dat <- denver_fishnet %>%
 with a test set
 
 with a training set
->>>>>>> c2ad54d03ceeeab881ad75f9bb1fa866b66fb410
+
