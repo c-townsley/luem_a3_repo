@@ -19,7 +19,7 @@ output:
 The purpose of this assignment is to.....
 
 
-# 1.1 Setup
+## 1.1 Setup
 
 
 ```{r setup, include=FALSE}
@@ -75,13 +75,44 @@ plotTheme <- theme(
   axis.ticks=element_blank())
 ```
 
+## 1.2 Load Data
+
 ```{r load_data, warning = FALSE, message = FALSE, results = "hide"}
 denver_boundary <-read_sf("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_bound/denver_bound.shp")
 
 calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND_LIMIT.shp")
 ```
 
-Created a fishnet for Denver.
+
+# 2. Fishnets and Data Wrangling
+
+
+## 2.1 Create Fishnets
+
+Create a fishnet for Calgary
+
+```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
+
+calgary_fishnet <- st_make_grid(calgary_boundary,
+                        cellsize = 402.336,
+                        square = FALSE) %>% 
+  .[calgary_boundary] %>% 
+  st_sf() %>% 
+  mutate(uniqueID = rownames(.))
+
+ggplot()+
+  geom_sf(data = calgary_fishnet,
+          fill = "lightgrey")+
+  geom_sf(data = calgary_boundary, 
+          color = "red", fill = "transparent")
+
+st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
+
+```
+
+
+Create a fishnet for Denver
+
 ```{r create_fishnets_denver, warning = FALSE, message = FALSE, results = "hide"}
 
 denver_fishnet <- st_make_grid(denver_boundary,
@@ -145,11 +176,10 @@ ggplot()+
 ```
 
 
-# 1.2 Feature Engineering
+## 2.2 Feature Engineering: Arc to R
 
-**Loading in Features from ArcGIS and Joining with the Fishnets**
 
-Calgary
+Join Calgary features to fishnet.
 
 ```{r join engineered features to calg fishnet, warning = FALSE, message = FALSE, results = "hide"}
 #load in cleaned fishnet with partial cells removed
@@ -189,7 +219,9 @@ calg_dat <- calgary_fishnet %>%
 ```
 
 
-Denver
+
+Join Denver features to fishnet.
+
 ```{r get_variables_denver, warning = FALSE, message = FALSE, results = "hide"}
 
 denv_pervious <- read.csv ("Denver/Processed/zonalstats_tables/denv_pervious_mean.csv") %>% 
@@ -232,9 +264,183 @@ denver_dat <- denver_dat %>%
   st_transform(crs = 2232)
 ```
 
-**Logistic Regressions**
 
-with a test set
+## 2.3 What is our Data Telling Us?
 
-with a training set
+
+How do our variables correlate with inundated/not inundated values?
+
+``` {r: data spread, warning = FALSE, message = FALSE, results = "hide"}
+
+#violin plots
+#change code for for calgary_dat
+##use boxplots with scatter points to visualize the spread of data?
+
+ggplot(preservePlotVariables) + 
+     geom_violin(aes(x = as.factor(preserve), 
+                  y = value, fill = as.factor(preserve))) + 
+     facet_wrap(~variable, scales = "free") +
+     labs(x="Preserved", y="Value") + 
+     scale_fill_manual(values = c("dark blue", "dark green"),
+     labels = c("Not Preserved","Preserved"), name = "") +
+     labs(x="Preserved", y="Value") + 
+  plotTheme
+
+##facet_wrap - one ggplot recipe for each variable
+###use scales = free or free_y to plot values that are comparatively lower or higher
+```
+
+``` {r: correlation matrix, warning = FALSE, message = FALSE, results = "hide"}
+
+#Riddhi to get code for this
+
+```
+
+
+How many fishnet cells in Calgary are inundated?
+
+``` {r: fishnet cell calcs, warning = FALSE, message = FALSE, results = "hide"}
+
+#calculate on calgary_dat
+
+
+
+```
+
+
+# 3. Logistic Regressions
+
+## 3.1 Test, Train, Repeat
+
+```{r training_set, warning = FALSE, message = FALSE, results = "hide"}
+
+#change code for calgary_dat
+
+set.seed(3456)
+trainIndex <- createDataPartition(preserve$landCover, p = .70,
+                                  list = FALSE,
+                                  times = 1)
+
+preserveTrain <- preserve[ trainIndex,]
+preserveTest  <- preserve[-trainIndex,]
+
+##the sets are randomly generated
+##p=0.70 indicates the 70/30 partition
+```
+
+
+## 3.2 Regress
+
+Now let’s estimate a logistic regression model. The binomial logit model runs in the `glm` function (generalized linear models). We specify the dependent variable as `preserve` and run the model on our training set `preserveTrain`.
+
+Note how we can use the dplyr pipes right in the data parameter. We have to convert to a data frame because R won’t know how to run a regression on an sf.
+
+Let's look at the model output, we see that we have coefficients, and p-values, but no R-squared. There are other goodness of fit metrics we will look at. The AIC, though not on a 0-1 scale like R-squared, has a similar function in that it tells you about overall model fit, but not about error and accuracy.
+
+We are not really interested in our coefficients other than their magnitude, directionality and p-value (generall). But for the record, the way the coefficients in a logistic regression are interpreted is different than in OLS - we are talking in terms of "odds" of an outcome occurring (in our case odds of land being preserved.). If we exponentiate the coefficient (`exp()`) we can interpret it as *all else equal* the exponentiated value being the increase or decrease in the odds of the outcome.
+
+
+```{r firstModel, warining = FALSE, message = FALSE}
+preserveModel <- glm(preserve ~ ., 
+                    family="binomial"(link="logit"), data = preserveTrain %>%
+                                                            as.data.frame() %>%
+                                                            select(-geometry, -Id))
+summary(preserveModel)
+
+```
+
+
+## 3.3 Model Validation
+
+Using the `predict` function, we create a vector of classification probabilities we call `classProbs`. These are the predicted probability of a test set (`preserveTest`) fishnet cell being conserved conditional on our model. Setting the parameter `type="reponse"` returns probabilities that range from 0 to 1.
+
+
+```{r predict_first}
+classProbs <- predict(preserveModel, preserveTest, type="response")
+
+hist(classProbs)
+
+##histogram is for the whole dataset
+##represents the probability that a cell will be preserved (x-axis), vs number of cells with that probability (y-axis)
+```
+
+Let’s put `classProbs` into a data frame along with the observed `preserve` outcome, which is either `1` for preserved land or `0` for unpreserved.
+
+Then we build this funky plot, `testProbsPlot`. The vertical line represents a 0.5 probability of preservation.
+
+__Can you interperet this plot? Can you come up with a title for this plot?__
+
+```{r plot_preds}
+testProbs <- data.frame(obs = as.numeric(preserveTest$preserve),
+                        pred = classProbs)
+
+ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) + 
+  geom_density() +
+  facet_grid(obs ~ .) + 
+  xlab("Probability") + 
+  ylab("Frequency") +
+  geom_vline(xintercept = .5) +
+  scale_fill_manual(values = c("dark blue", "dark green"),
+                      labels = c("Not Preserved","Preserved"),
+                      name = "")+
+  plotTheme
+
+##y-axis are unit-less values
+```
+
+
+# 4. Confusion, Indeed
+
+## 4.1 Confusion Metrics
+
+__Now we have to figure out at which probability level do we wish to classify land as being preserved.  How do we make this decision?__
+
+Let’s (arbitrarily for now) choose 50% and then create a table of our correct and incorrect predictions, called a "confusion matrix". Below we set the reference to the observed preserved status, data to the predicted outcome, and make sure to state which factor level is the positive (ie. preserved) level. Note that `confusionMatrix` does not take numeric inputs, only factors.
+
+```{r confusion_matrix, message = FALSE, warning = FALSE}
+testProbs$predClass  = ifelse(testProbs$pred > .5 ,1,0)
+
+caret::confusionMatrix(reference = as.factor(testProbs$obs), 
+                       data = as.factor(testProbs$predClass), 
+                       positive = "1")
+```
+
+What is the sensitivity and specificity suggest about our model? What is accuracy suggest? Why would we choose a higher threshold cutoff?
+
+**Predicted = 0, Observed = 0 —> True Negative**
+
+**Predicted = 1, Observed = 1 —> True Positive**
+
+**Predicted = 1, Observed = 0 —> False Positive**
+
+**Predicted = 0, Observed = 1 —> False Negative**
+
+**1. Sensitivity - the proportion of actual positives (1’s) that were predicted to be positive. Also known as “true positive rate”.**
+
+**2. Specificity - The proportion of actual negatives (0’s) that were predicted to be negatives. Also known as “true negative rate”.**
+
+
+## 4.2 ROC Curve
+
+Let's create an ROC (receiver operating characteristic) curve. What does this tell us? 
+
+See Appendix 1 for more on ROC curves.
+
+```{r roc_curve, message = FALSE, warning = FALSE}
+
+ggplot(testProbs, aes(d = obs, m = pred)) + 
+  geom_roc(n.cuts = 50, labels = FALSE) + 
+  style_roc(theme = theme_grey) +
+  geom_abline(slope = 1, intercept = 0, size = 1.5, color = 'grey') 
+```
+
+How about the area under the curve?
+
+```{r auc, warning = FALSE}
+auc(testProbs$obs, testProbs$pred)
+```
+
+
+## 4.3 Cross Validation
+
 
