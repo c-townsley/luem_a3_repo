@@ -141,7 +141,7 @@ st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishn
 
 Join Calgary features to fishnet.
 
-```{r join engineered features to calg fishnet}
+```{r join engineered features to calg fishnet, warning = FALSE, message = FALSE, results = "hide"}
 #load in cleaned fishnet with partial cells removed
 calgary_fishnet <-  read_sf("Calgary/Processed/calgary_fishnet_nozeros/calgary_fishnet_nozeros.shp")
 
@@ -151,11 +151,31 @@ calg_inund <- read_csv("Calgary/Processed/zonalstats_tables/calg_inundation_sum.
   dplyr::select(uniqueID, inund_sum) %>% 
   mutate(inund_sum = ifelse(inund_sum >= 16, 1, 0)) #turn inundation sum values into binary (threshold = 16)
 
-#land cover
+calg_pervious <- read.csv("Calgary/Processed/zonalstats_tables/calg_pervious_mean.csv") %>% 
+  dplyr::select(uniqueID, MEAN) %>% 
+  rename(pervious_mean = MEAN)
 
-#flow accumulation
+calg_elevation <- read.csv("Calgary/Processed/zonalstats_tables/calg_elevation_med.csv") %>% 
+    dplyr::select(uniqueID, MEDIAN) %>% 
+  rename(elevation_median = MEDIAN)
 
-#distance to rivers
+
+calg_flowac <- read.csv("Calgary/Processed/zonalstats_tables/calg_flowac_mean.csv") %>% 
+    dplyr::select(uniqueID, MEAN) %>% 
+  rename(flowac_mean = MEAN)
+
+
+calg_streamdist <- read.csv("Calgary/Processed/zonalstats_tables/calg_dist2stream_min.csv") %>% 
+    dplyr::select(uniqueID, MIN) %>% 
+  rename(streamdist_min = MIN)
+
+calg_dat <- calgary_fishnet %>%
+  mutate(uniqueID = as.integer(uniqueID)) %>% 
+  left_join(calg_inund, by = 'uniqueID') %>% 
+  left_join(calg_pervious, by = 'uniqueID') %>%
+  left_join(calg_elevation, by = 'uniqueID') %>% 
+  left_join(calg_flowac, by = 'uniqueID') %>% 
+  left_join(calg_streamdist, by = 'uniqueID')
 ```
 
 
