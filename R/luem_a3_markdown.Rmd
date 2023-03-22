@@ -99,7 +99,7 @@ ggplot()+
           color = "red", fill = "transparent")
 
 st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp",
-         append = TRUE, geometry = TRUE)
+         geometry = TRUE)
 ```
 
 
@@ -151,6 +151,36 @@ ggplot()+
 Calgary
 
 Denver
+```{r get_variables_denver, warning = FALSE, message = FALSE, results = "hide"}
+
+denv_pervious <- read.csv ("Denver/Processed/zonalstats_tables/denv_pervious_mean.csv") %>% 
+  dplyr::select(uniqueID, MEAN) %>% 
+  rename(pervious_mean = MEAN)
+
+denv_elevation <- read.csv("Denver/Processed/zonalstats_tables/denv_elevation_med.csv") %>% 
+    dplyr::select(uniqueID, MEDIAN) %>% 
+  rename(elevation_median = MEDIAN)
+
+
+denv_flowac <- read.csv("Denver/Processed/zonalstats_tables/denv_flowac_mean.csv") %>% 
+    dplyr::select(uniqueID, MEAN) %>% 
+  rename(flowac_mean = MEAN)
+
+
+denv_streamdist <- read.csv("Denver/Processed/zonalstats_tables/denv_dist2stream_min.csv") %>% 
+    dplyr::select(uniqueID, MIN) %>% 
+  rename(streamdist_min = MIN)
+
+
+denver_dat <- denver_fishnet %>%
+  mutate(uniqueID = as.integer(uniqueID)) %>% 
+  left_join(denv_pervious, by = 'uniqueID') %>%
+  left_join(denv_elevation, by = 'uniqueID') %>% 
+  left_join(denv_flowac, by = 'uniqueID') %>% 
+  left_join(denv_streamdist, by = 'uniqueID')
+  
+              
+```
 
 
 **Logistic Regressions**
