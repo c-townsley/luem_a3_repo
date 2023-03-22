@@ -82,6 +82,7 @@ denver_boundary <-read_sf("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_bou
 calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND_LIMIT.shp")
 ```
 
+Created a fishnet for Denver.
 ```{r create_fishnets_denver, warning = FALSE, message = FALSE, results = "hide"}
 
 denver_fishnet <- st_make_grid(denver_boundary,
@@ -99,9 +100,11 @@ ggplot()+
 
 st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp",
          append = TRUE, geometry = TRUE)
-
 ```
 
+
+
+Created a fishnet for Calgary.
 ```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
 
 calgary_fishnet <- st_make_grid(calgary_boundary,
@@ -119,6 +122,7 @@ ggplot()+
 
 ```
 
+<<<<<<< HEAD
 
 ```{r create_fishnets_denver_lulc, warning = FALSE, message = FALSE, results = "hide"}
 
@@ -142,3 +146,17 @@ ggplot()+
           color = "red", fill = "transparent")
 
 ```
+=======
+**Loading in Features from ArcGIS and Joining with the Fishnets**
+
+Calgary
+
+Denver
+
+
+**Logistic Regressions**
+
+with a test set
+
+with a training set
+>>>>>>> c2ad54d03ceeeab881ad75f9bb1fa866b66fb410
