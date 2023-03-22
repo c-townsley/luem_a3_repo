@@ -14,13 +14,12 @@ output:
     highlight: tango
 ---
 
-1. Introduction
+# 1. Introduction
 
 The purpose of this assignment is to.....
 
 
-
-1.1 Setup
+# 1.1 Setup
 
 
 ```{r setup, include=FALSE}
@@ -76,7 +75,6 @@ plotTheme <- theme(
   axis.ticks=element_blank())
 ```
 
-
 ```{r load_data, warning = FALSE, message = FALSE, results = "hide"}
 denver_boundary <-read_sf("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_bound/denver_bound.shp")
 
@@ -102,8 +100,6 @@ ggplot()+
 st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp",
          geometry = TRUE)
 ```
-
-
 
 Created a fishnet for Calgary.
 ```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
@@ -148,6 +144,8 @@ ggplot()+
 
 ```
 
+
+# 1.2 Feature Engineering
 
 **Loading in Features from ArcGIS and Joining with the Fishnets**
 
@@ -223,6 +221,16 @@ denver_dat <- denver_fishnet %>%
               
 ```
 
+
+Set projections
+
+```{r transform}
+calg_dat <- calg_dat %>%
+  st_transform(crs = 3776)
+
+denver_dat <- denver_dat %>%
+  st_transform(crs = 2232)
+```
 
 **Logistic Regressions**
 
