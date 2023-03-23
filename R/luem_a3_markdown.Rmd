@@ -16,7 +16,9 @@ output:
 
 # 1. Introduction
 
-The purpose of this assignment is to.....
+The purpose of this assignment is to...
+
+...The Planning motivation for this algorithm and how we would deploy such an algorithm.
 
 
 ## 1.1 Setup
@@ -26,7 +28,6 @@ The purpose of this assignment is to.....
 knitr::opts_chunk$set(echo = TRUE)
 
 knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
-
 #knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
@@ -132,7 +133,7 @@ st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishn
          geometry = TRUE)
 ```
 
-Created a fishnet for Calgary.
+Create a fishnet for Calgary.
 ```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
 
 calgary_fishnet <- st_make_grid(calgary_boundary,
@@ -156,6 +157,8 @@ st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp
 
 #I don't think this makes sense, just trying it out
 
+#Can we delete this?
+
 denver_lulc <- raster("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_lulc_coded/den_lulc_c/denver_lulc.tif")
 
 plot(denver_lulc)
@@ -178,6 +181,7 @@ ggplot()+
 
 ## 2.2 Feature Engineering: Arc to R
 
+Created features in ArcGIS to process and join in R. 
 
 Join Calgary features to fishnet.
 
@@ -217,8 +221,6 @@ calg_dat <- calgary_fishnet %>%
   left_join(calg_flowac, by = 'uniqueID') %>% 
   left_join(calg_streamdist, by = 'uniqueID')
 ```
-
-
 
 Join Denver features to fishnet.
 
@@ -270,7 +272,7 @@ denver_dat <- denver_dat %>%
 
 How do our variables correlate with inundated/not inundated values?
 
-``` {r: data spread, warning = FALSE, message = FALSE, results = "hide"}
+``` {r data spread, warning = FALSE, message = FALSE, results = "hide"}
 
 #violin plots
 #change code for for calgary_dat
