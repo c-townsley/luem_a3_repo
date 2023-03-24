@@ -104,7 +104,8 @@ calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND
 
 ## 2.1 Create Fishnets
 
-Create a fishnet for Calgary
+
+Create a fishnet for Calgary to do processing in ArcGIS.
 
 ```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
 
@@ -119,14 +120,15 @@ ggplot()+
   geom_sf(data = calgary_fishnet,
           fill = "lightgrey")+
   geom_sf(data = calgary_boundary, 
-          color = "red", fill = "transparent")
+          color = "red", fill = "transparent") +
+  mapTheme
 
 st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
 
 ```
 
 
-Create a fishnet for Denver
+Create a fishnet for Denver to do processing in ArcGIS.
 
 ```{r create_fishnets_denver, warning = FALSE, message = FALSE, results = "hide"}
 
@@ -139,65 +141,25 @@ denver_fishnet <- st_make_grid(denver_boundary,
 
 ggplot()+
   geom_sf(data = denver_fishnet,
-          color="darkgrey", fill = "lightgrey")+
+          color="darkgrey", fill = "lightgrey") +
   geom_sf(data = denver_boundary, 
-          color = "red", fill = "transparent")
+          color = "red", fill = "transparent") +
+  mapTheme
+  
 
 st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp",
          geometry = TRUE)
 ```
 
-Create a fishnet for Calgary.
-```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
-
-calgary_fishnet <- st_make_grid(calgary_boundary,
-                        cellsize = 402.336,
-                        square = FALSE) %>% 
-  .[calgary_boundary] %>% 
-  st_sf() %>% 
-  mutate(uniqueID = rownames(.))
-
-ggplot()+
-  geom_sf(data = calgary_fishnet,
-          fill = "lightgrey")+
-  geom_sf(data = calgary_boundary, 
-          color = "red", fill = "transparent")
-
-st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
-
-```
-
-```{r create_fishnets_denver_lulc, warning = FALSE, message = FALSE, results = "hide"}
-
-#I don't think this makes sense, just trying it out
-
-#Can we delete this?
-
-denver_lulc <- raster("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_lulc_coded/den_lulc_c/denver_lulc.tif")
-
-plot(denver_lulc)
-
-denver_lulc_fishnet <- st_make_grid(denver_lulc,
-                        cellsize = 1320,
-                        square = FALSE) %>% 
-  st_sf() %>% 
-  mutate(uniqueID = rownames(.))
-
-view(denver_lulc_fishnet)
-
-ggplot()+
-  geom_sf(data = denver_lulc_fishnet) +
-  geom_sf(data = denver_boundary, 
-          color = "red", fill = "transparent")
-
-```
-
 
 ## 2.2 Feature Engineering: Arc to R
 
-Created features in ArcGIS to process and join in R. 
-
-Join Calgary features to fishnet.
+Processed raster features for Calgary are exported from ArcGIS as tables containing zonal statistics by fishnet cell. These tables are then re-imported to R and joined with their respective fishnets. The list of features in question is:
+* Flood inundation
+* Pervious and impervious landcover
+* Elevation
+* Flow accumulation
+* Distance to river
 
 ```{r join engineered features to calg fishnet, warning = FALSE, message = FALSE, results = "hide"}
 #load in cleaned fishnet with partial cells removed
@@ -240,7 +202,8 @@ calg_dat <- calgary_fishnet %>%
   
 ```
 
-Join Denver features to fishnet.
+
+The same process is followed for Denver with the same features, excluding inundation.
 
 ```{r get_variables_denver, warning = FALSE, message = FALSE, results = "hide"}
 
@@ -269,23 +232,38 @@ denver_dat <- denver_fishnet %>%
   left_join(denv_elevation, by = 'uniqueID') %>% 
   left_join(denv_flowac, by = 'uniqueID') %>% 
   left_join(denv_streamdist, by = 'uniqueID')
-  
               
 ```
 
 
-Set projections
+## 2.3 Mapping Features
 
-```{r transform}
+Mapping the fishnet of calgary with these features reveals...
+
+```{r mapping calgary inundation}
 calg_dat <- calg_dat %>%
   st_transform(crs = 3776)
 
-denver_dat <- denver_dat %>%
-  st_transform(crs = 2232)
+ggplot() +
+  geom_sf(data = calgary_boundary)+
+  geom_sf(data=calg_dat, aes(fill=as.factor(inund_sum)), alpha = 0.6, color = "transparent") +
+  scale_fill_manual(values = c("lightblue", "mediumblue"),
+                    labels = c("Not Inundated", "Inundated"), name = "") +
+  labs(title="Inundation in Calgary") +
+  mapTheme
+
 ```
 
 
-## 2.3 What is our Data Telling Us?
+```{r mapping denver }
+denver_dat <- denver_dat %>%
+  st_transform(crs = 2232)
+
+```
+
+
+
+## 2.4 What is our Data Telling Us?
 
 
 How do our variables correlate with inundated/not inundated values?
@@ -446,7 +424,6 @@ What is the sensitivity and specificity suggest about our model? What is accurac
 **1. Sensitivity - the proportion of actual positives (1’s) that were predicted to be positive. Also known as “true positive rate”.**
 
 **2. Specificity - The proportion of actual negatives (0’s) that were predicted to be negatives. Also known as “true negative rate”.**
-
 
 ## 4.2 ROC Curve
 
