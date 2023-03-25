@@ -39,6 +39,14 @@ library(tidyverse)
 library(sf)
 library(raster)
 library(data.table)
+library(ggcorrplot)
+library(caret)
+library(pscl)
+library(plotROC)
+library(pROC)
+library(kableExtra)
+library(tigris)
+library(viridis)
 ```
 
 ```{r themes, warning = FALSE, message = FALSE, results = "hide"}
@@ -121,7 +129,7 @@ ggplot()+
   geom_sf(data = calgary_boundary, 
           color = "red", fill = "transparent")
 
-st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
+#st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
 
 ```
 
@@ -143,8 +151,7 @@ ggplot()+
   geom_sf(data = denver_boundary, 
           color = "red", fill = "transparent")
 
-st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp",
-         geometry = TRUE)
+#st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp", geometry = TRUE)
 ```
 
 Create a fishnet for Calgary.
@@ -163,35 +170,9 @@ ggplot()+
   geom_sf(data = calgary_boundary, 
           color = "red", fill = "transparent")
 
-st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
+#st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
 
 ```
-
-```{r create_fishnets_denver_lulc, warning = FALSE, message = FALSE, results = "hide"}
-
-#I don't think this makes sense, just trying it out
-
-#Can we delete this?
-
-denver_lulc <- raster("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_lulc_coded/den_lulc_c/denver_lulc.tif")
-
-plot(denver_lulc)
-
-denver_lulc_fishnet <- st_make_grid(denver_lulc,
-                        cellsize = 1320,
-                        square = FALSE) %>% 
-  st_sf() %>% 
-  mutate(uniqueID = rownames(.))
-
-view(denver_lulc_fishnet)
-
-ggplot()+
-  geom_sf(data = denver_lulc_fishnet) +
-  geom_sf(data = denver_boundary, 
-          color = "red", fill = "transparent")
-
-```
-
 
 ## 2.2 Feature Engineering: Arc to R
 
@@ -229,14 +210,16 @@ calg_streamdist <- read.csv("Calgary/Processed/zonalstats_tables/calg_dist2strea
 
 calg_dat <- calgary_fishnet %>%
   mutate(uniqueID = as.integer(uniqueID)) %>% 
-  left_join(calg_inund, by = 'uniqueID') %>% 
-  left_join(calg_pervious, by = 'uniqueID') %>%
-  left_join(calg_elevation, by = 'uniqueID') %>% 
-  left_join(calg_flowac, by = 'uniqueID') %>% 
-  left_join(calg_streamdist, by = 'uniqueID') %>% 
+  left_join(calg_inund, by = "uniqueID") %>% 
+  left_join(calg_pervious, by = "uniqueID") %>%
+  left_join(calg_elevation, by = "uniqueID") %>% 
+  left_join(calg_flowac, by = "uniqueID") %>% 
+  left_join(calg_streamdist, by = "uniqueID") %>% 
   mutate(flowac_mean_log = log(flowac_mean),
          streamdist_min_log = log(streamdist_min)) %>% 
   na.omit() %>% 
+    dplyr::mutate(streamdist_min_log = if_else(streamdist_min_log <0, 0, streamdist_min_log),
+         flowac_mean_log = if_else(flowac_mean_log <0, 0, flowac_mean_log))
   
 ```
 
@@ -268,7 +251,12 @@ denver_dat <- denver_fishnet %>%
   left_join(denv_pervious, by = 'uniqueID') %>%
   left_join(denv_elevation, by = 'uniqueID') %>% 
   left_join(denv_flowac, by = 'uniqueID') %>% 
-  left_join(denv_streamdist, by = 'uniqueID')
+  left_join(denv_streamdist, by = 'uniqueID') %>% 
+    mutate(flowac_mean_log = log(flowac_mean),
+         streamdist_min_log = log(streamdist_min)) %>% 
+  na.omit() %>% 
+    dplyr::mutate(streamdist_min_log = if_else(streamdist_min_log <0, 0, streamdist_min_log),
+         flowac_mean_log = if_else(flowac_mean_log <0, 0, flowac_mean_log))
   
               
 ```
@@ -291,10 +279,11 @@ denver_dat <- denver_dat %>%
 How do our variables correlate with inundated/not inundated values?
 
 ```{r wide_2_long}
-inundPlotVariables <- calg_dat %>% 
+calg_PlotVariables <- calg_dat %>% 
   as.data.frame() %>%
     dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log) %>% 
     pivot_longer(cols = -inund_sum)
+
 ```
 
 
@@ -304,7 +293,7 @@ inundPlotVariables <- calg_dat %>%
 #change code for for calgary_dat
 ##use boxplots with scatter points to visualize the spread of data?
 
-ggplot(inundPlotVariables) + 
+ggplot(calg_PlotVariables) + 
      geom_violin(aes(x = as.factor(inund_sum), 
                   y = value, fill = as.factor(inund_sum))) + 
      facet_wrap(~name, scales = "free_y") +
@@ -318,21 +307,37 @@ ggplot(inundPlotVariables) +
 ###use scales = free or free_y to plot values that are comparatively lower or higher
 ```
 
-``` {r: correlation matrix, warning = FALSE, message = FALSE, results = "hide"}
+``` {r correlation matrix, warning = FALSE, message = FALSE, results = "hide"}
 
-#Riddhi to get code for this
+corr <- calg_dat %>% 
+  dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log) %>%  
+  dplyr::summarise(inund_sum = (inund_sum),
+            pervious_mean = (pervious_mean),
+            elevation_median = (elevation_median),
+            flowac_mean_log = (flowac_mean_log),
+            streamdist_min_log = (streamdist_min_log))
+
+
+calg_matrix = cor(corr)
+
+ggcorrplot(calg_matrix, method="square", colors = c("gray2", "wheat1", "darkorchid4"),
+           tl.cex=7)
 
 ```
 
 
 How many fishnet cells in Calgary are inundated?
 
-``` {r: fishnet cell calcs, warning = FALSE, message = FALSE, results = "hide"}
+``` {r fishnet cell calcs, warning = FALSE, message = FALSE, results = "hide"}
 
 #calculate on calgary_dat
 
+calg_inund_fishnet <- calg_dat %>% 
+  filter(inund_sum == 1)
 
+no_fishnets <-(509/5373)*100
 
+#About 509 of 5373, or 9.5% of fishnet cells in Calgary are inundated
 ```
 
 
@@ -345,12 +350,16 @@ How many fishnet cells in Calgary are inundated?
 #change code for calgary_dat
 
 set.seed(3456)
-trainIndex <- createDataPartition(preserve$landCover, p = .70,
-                                  list = FALSE,
-                                  times = 1)
 
-preserveTrain <- preserve[ trainIndex,]
-preserveTest  <- preserve[-trainIndex,]
+trainIndex <- createDataPartition(calg_dat$elevation_median, p = .70,
+                                  list = FALSE,
+                                  times = 1) 
+
+inundTrain <- calg_dat[ trainIndex,] %>% 
+  dplyr::select(-flowac_mean, -streamdist_min)
+
+inundTest  <- calg_dat[-trainIndex,]%>% 
+  dplyr::select(-flowac_mean, -streamdist_min)
 
 ##the sets are randomly generated
 ##p=0.70 indicates the 70/30 partition
@@ -369,11 +378,11 @@ We are not really interested in our coefficients other than their magnitude, dir
 
 
 ```{r firstModel, warining = FALSE, message = FALSE}
-preserveModel <- glm(preserve ~ ., 
-                    family="binomial"(link="logit"), data = preserveTrain %>%
+inundModel <- glm(inund_sum ~ ., 
+                    family="binomial"(link="logit"), data = inundTrain %>%
                                                             as.data.frame() %>%
-                                                            select(-geometry, -Id))
-summary(preserveModel)
+                                                            dplyr::select(-geometry, -uniqueID))
+summary(inundModel)
 
 ```
 
@@ -384,22 +393,18 @@ Using the `predict` function, we create a vector of classification probabilities
 
 
 ```{r predict_first}
-classProbs <- predict(preserveModel, preserveTest, type="response")
+classProbs <- predict(inundModel, inundTest, type="response")
 
 hist(classProbs)
 
 ##histogram is for the whole dataset
-##represents the probability that a cell will be preserved (x-axis), vs number of cells with that probability (y-axis)
+##represents the probability that a cell will be inundated (x-axis), vs number of cells with that probability (y-axis)
 ```
-
-Let’s put `classProbs` into a data frame along with the observed `preserve` outcome, which is either `1` for preserved land or `0` for unpreserved.
-
-Then we build this funky plot, `testProbsPlot`. The vertical line represents a 0.5 probability of preservation.
-
-__Can you interperet this plot? Can you come up with a title for this plot?__
+The plot below illustrates a distribution of predicted probabilities, based on the training and test sets. It is a measure of how well our data is predicting probabilities for "inundation" (1s) vs "no inundation" (0s), where the vertical line represents a 0.5 probability of inundation.
+In this case the values reflecting not inundated areas are clustered closer to zero, indicating a lower probability for inundation overall *(???)* 
 
 ```{r plot_preds}
-testProbs <- data.frame(obs = as.numeric(preserveTest$preserve),
+testProbs <- data.frame(obs = as.numeric(inundTest$inund_sum),
                         pred = classProbs)
 
 ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) + 
@@ -408,12 +413,12 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
   xlab("Probability") + 
   ylab("Frequency") +
   geom_vline(xintercept = .5) +
-  scale_fill_manual(values = c("dark blue", "dark green"),
-                      labels = c("Not Preserved","Preserved"),
+  scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
+                      labels = c("Not Inundated","Inundated"),
                       name = "")+
   plotTheme
 
-##y-axis are unit-less values
+
 ```
 
 
@@ -421,11 +426,31 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
 
 ## 4.1 Confusion Metrics
 
-__Now we have to figure out at which probability level do we wish to classify land as being preserved.  How do we make this decision?__
+To test the model's prediction accuracy, we created a confusion matrix from which levels of error can be extrapolated.
+If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.923**, with the following sensitivity and specificity results:
 
-Let’s (arbitrarily for now) choose 50% and then create a table of our correct and incorrect predictions, called a "confusion matrix". Below we set the reference to the observed preserved status, data to the predicted outcome, and make sure to state which factor level is the positive (ie. preserved) level. Note that `confusionMatrix` does not take numeric inputs, only factors.
+**Sensitivity & Specificity Analysis**
+_Predicted vs. Reference Values, 50% Cutoff_
+
+-------------------
+|   | 0    | 1    |
+-------------------
+| 0 | 1414 | 46   |
+| 1 | 77   | 74   |
+-------------------
+
+
+* It has predicted 0 as 0, i.e. a _True Negative_, 1414 times
+* It has predicted 0 as 1, i.e. a _False Negative_, 77 times
+* It has predicted 1 as 0, i.e. a _False Positive_, 46 times
+* It has predicted 1 as 1, i.e. a _True Positive_, 74 times
+
+Overall, the model's true positive rate, i.e., the proportion of 1s predicted as 1s indicates its _sensitivity_, which in this case is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, i.e., the proportion of 0s accurately predicted as 0s is about 18 times greater than the number of 0s falsely predicted as 1s, indicating the model's _specificity_.
+
+It has an error rate of about 8% as derived from the accuracy (Error = Accuracy - 1), which is demonstrated by the fact that the model's 123 erroneous predictions (77+46) are only a small fraction of its 1488 accurate predictions (1414+74)
 
 ```{r confusion_matrix, message = FALSE, warning = FALSE}
+
 testProbs$predClass  = ifelse(testProbs$pred > .5 ,1,0)
 
 caret::confusionMatrix(reference = as.factor(testProbs$obs), 
@@ -433,24 +458,58 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
                        positive = "1")
 ```
 
-What is the sensitivity and specificity suggest about our model? What is accuracy suggest? Why would we choose a higher threshold cutoff?
+We experimented with the threshold cutoff to check how the model would respond, and found that:
 
-**Predicted = 0, Observed = 0 —> True Negative**
+*The accuracy of a model with with a 75% threshold cutoff remains the same as the original model with a 50% cutoff. However, it contains slightly different levels of False Positive and False Negative predictions:
 
-**Predicted = 1, Observed = 1 —> True Positive**
 
-**Predicted = 1, Observed = 0 —> False Positive**
+**Sensitivity & Specificity Analysis**
+_Predicted vs. Reference Values, 75% Cutoff_
 
-**Predicted = 0, Observed = 1 —> False Negative**
+-------------------
+|   | 0    | 1    |
+-------------------
+| 0 | 1454 | 118  |
+| 1 | 6    | 33   |
+-------------------
 
-**1. Sensitivity - the proportion of actual positives (1’s) that were predicted to be positive. Also known as “true positive rate”.**
 
-**2. Specificity - The proportion of actual negatives (0’s) that were predicted to be negatives. Also known as “true negative rate”.**
+*Similarly, the accuracy of a model with a 25% cutoff is only marginally lower than the original model at 0.918, but it also exhibits a lower specificity:
+
+
+**Sensitivity & Specificity Analysis**
+_Predicted vs. Reference Values, 25% Cutoff_
+
+-------------------
+|   | 0    | 1    |
+-------------------
+| 0 | 1383 | 55   |
+| 1 | 77   | 96   |
+-------------------
+
+
+```{r confusion_matrix_75_25, message = FALSE, warning = FALSE}
+
+testProbs$predClass75  = ifelse(testProbs$pred > .75 ,1,0)
+
+caret::confusionMatrix(reference = as.factor(testProbs$obs), 
+                       data = as.factor(testProbs$predClass75), 
+                       positive = "1")
+
+testProbs$predClass25  = ifelse(testProbs$pred > .25 ,1,0)
+
+caret::confusionMatrix(reference = as.factor(testProbs$obs), 
+                       data = as.factor(testProbs$predClass25), 
+                       positive = "1")
+
+```
 
 
 ## 4.2 ROC Curve
 
-Let's create an ROC (receiver operating characteristic) curve. What does this tell us? 
+The Receiver Operating Characteristic (ROC) curve for our original model with a 50% cutoff tells us that....
+
+The area under the curve is calculated as 0.947, which confirms that the model is able to predict flood inundation with a 95% accuracy. 
 
 See Appendix 1 for more on ROC curves.
 
@@ -462,13 +521,157 @@ ggplot(testProbs, aes(d = obs, m = pred)) +
   geom_abline(slope = 1, intercept = 0, size = 1.5, color = 'grey') 
 ```
 
-How about the area under the curve?
-
 ```{r auc, warning = FALSE}
 auc(testProbs$obs, testProbs$pred)
 ```
+## 4.3 Cross Validation for Generalizability
+
+The following section checks the accuracy of our predictions across 100 randomly generated test sets, to gauge its applicability to predict Denver's chances of inundation.
+
+Plotting a histogram of the accuracy for each fold allows us to trace its generalizability.
+The plot points out that a large number of folds (i.e., values from the "Resample" column) are clustered at high accuracy values. 
+This indicates a high level of generalizability -- a measure of the model's capacity to be applied to predict other sample sets -- in our case, flood inundation in Denver.
+
+It gives the model confidence in moving to the final stage of the project -- applying Calgary's flood inundation predictions to the city of Denver. 
 
 
-## 4.3 Cross Validation
+```{r k_fold, warning = FALSE, message = FALSE}
+
+ctrl <- trainControl(method = "cv", 
+                     number = 100, 
+                     savePredictions = TRUE)
+
+cvFit <- train(as.factor(inund_sum) ~ .,
+               data = calg_dat %>% 
+                 as.data.frame() %>%
+                 dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log), 
+               method="glm", family="binomial",
+               trControl = ctrl)
+
+cvFit
+
+#cvFit is our model trained to predict using the binomial logistic regression, or glm, method. 
+```
+
+```{r cv_hist, warning = FALSE, message = FALSE}
+
+ggplot(as.data.frame(cvFit$resample), aes(Accuracy)) + 
+  geom_histogram() +
+  scale_x_continuous(limits = c(0, 1)) +
+  labs(x="Accuracy",
+       y="Count")+
+  plotTheme
+```
+
+# 5. Map Predictions
+
+Now that we have tuned our model, let’s predict for the entire dataset and assess our predictions.
+
+```{r predict_whole, warning = FALSE, message= FALSE}
+
+calg_dat_log <- calg_dat %>% 
+  dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry) 
+
+allPredictions <- 
+  predict(cvFit, calg_dat_log, type="prob")[,2]
+  
+calg_pred <- 
+  cbind(calg_dat_log,allPredictions) %>%
+  mutate(allPredictions = round(allPredictions * 100)) 
+```
+
+Now we map the predictions.
+
+What would you title this map? 
+
+Note how we use ntile in the aes parameter to create quintiles. (The quintile labels are created in the scale_fill_manual function.)
+
+```{r predicted_map1, warning = FALSE, message = FALSE}
+ ggplot() + 
+    geom_sf(data=calg_pred, aes(fill=factor(ntile(allPredictions,5))), 
+            colour=NA) +
+    scale_fill_manual(values = blues,
+                      labels=as.character(quantile(calg_pred$allPredictions,
+                                                 c(0.1,.2,.4,.6,.8),
+                                                 na.rm=T)),
+                      name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
+  mapTheme +
+  labs(title="Predicted Probability of Flood Inundation in Calgary")
+```
+
+Let’s map it again with the already calculated inundation types overlaid.
+
+```{r predicted_map2, warning = FALSE, message = FALSE}
+ ggplot() + 
+  geom_sf(data=calg_pred, aes(fill=factor(ntile(allPredictions,5))), colour=NA) +
+  scale_fill_manual(values = blues,
+                    labels=as.character(quantile(calg_pred$allPredictions,
+                                                 c(0.1,.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
+  geom_sf(data=calg_pred  %>% 
+               filter(inund_sum == 1), 
+               fill="#EDBA46", alpha=0.9, colour=NA) +
+    geom_sf(data=calg_pred %>% 
+              filter(inund_sum == 0), 
+            fill="#F9E2B2", alpha=0.35,colour=NA) +  
+  mapTheme +
+  labs(title="Observed and Predicted Flood Inundation Areas",
+       subtitle="Yellow marks areas with observed 'inundation', all other taken as 'not inundated' for the purpose of binary regression modeling")
+```
+
+In spite of the confusion matrix indicating low levels of false negatives proportionate to the data we processed for Calgary, the map helps spatially visualize how the model's errors are spread out, and what might be contributing to them. 
+
+There are a few reasons why the sensitivity and specificity indicators reflect the way they do in our model:
+
+*When processing zonal statistics in ArcGIS, we chose to measure inundation as a sum of intersecting fishnet cells. When converting it to binary data, we chose a threshold of "Inundation Sum = 16" to reflect a higher possible level of inundation. This could be a contributing factor to the way False Negatives are attributed across Calgary's map -- 
+
+*Our inundation data was extrapolated in ArcGIS from a raster layer where we subtracted the area of existing rivers, lakes, and streams from 'inundated' values, to more accurately reflect flood inundation external to water bodies. This could be reflecting a lack of observed .....
 
 
+
+```{r error_map, warning = FALSE, message= FALSE}
+calg_pred %>%
+  mutate(confResult=case_when(allPredictions < 50 & inund_sum==0 ~ "True Negative",
+                              allPredictions >= 50 & inund_sum==1 ~ "True Positive",
+                              allPredictions < 50 & inund_sum==1 ~ "False Negative",
+                              allPredictions >= 50 & inund_sum==0 ~ "False Positive")) %>%
+  ggplot()+
+  geom_sf(aes(fill = confResult), color = "transparent")+
+  scale_fill_manual(values = c("Red","Orange","Light Blue","Light Green"),
+                    name="Outcomes")+
+  labs(title="Confusion Metrics") +
+  mapTheme
+
+```
+
+*Does this type of model have more, less or the same level of usefulness as a raster-based site suitability? Why?*
+
+## Predictions for Denver
+
+```{r predict_whole_denver, warning = FALSE, message= FALSE}
+
+denver_dat_log <- denver_dat %>% 
+  dplyr::select(uniqueID, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry) 
+
+allPredictions_denver <- 
+  predict(cvFit, denver_dat_log, type="prob")[,2]
+  
+denver_pred <- 
+  cbind(denver_dat_log,allPredictions_denver) %>%
+  mutate(allPredictions = round(allPredictions_denver * 10000000)) 
+```
+
+```{r predicted_map_denver, warning = FALSE, message = FALSE}
+ ggplot() + 
+    geom_sf(data=denver_pred, aes(fill=factor(ntile(allPredictions,5))), 
+            colour=NA) +
+    scale_fill_manual(values = blues,
+                      labels=as.character(quantile(denver_pred$allPredictions,
+                                                 c(0.1,.2,.4,.6,.8),
+                                                 na.rm=T)),
+                      name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
+  mapTheme +
+  labs(title="Predicted Probability of Flood Inundation in Denver",
+       subtitle="Based on a Logistic Regression Model trained on data from Calgary")
+```
