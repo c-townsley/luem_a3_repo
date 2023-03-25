@@ -27,9 +27,9 @@ The purpose of this assignment is to...
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 ```
@@ -112,7 +112,8 @@ calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND
 
 ## 2.1 Create Fishnets
 
-Create a fishnet for Calgary
+
+Create a fishnet for Calgary to do processing in ArcGIS.
 
 ```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
 
@@ -127,14 +128,15 @@ ggplot()+
   geom_sf(data = calgary_fishnet,
           fill = "lightgrey")+
   geom_sf(data = calgary_boundary, 
-          color = "red", fill = "transparent")
+          color = "red", fill = "transparent") +
+  mapTheme
 
 #st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
 
 ```
 
 
-Create a fishnet for Denver
+Create a fishnet for Denver to do processing in ArcGIS.
 
 ```{r create_fishnets_denver, warning = FALSE, message = FALSE, results = "hide"}
 
@@ -147,12 +149,14 @@ denver_fishnet <- st_make_grid(denver_boundary,
 
 ggplot()+
   geom_sf(data = denver_fishnet,
-          color="darkgrey", fill = "lightgrey")+
+          color="darkgrey", fill = "lightgrey") +
   geom_sf(data = denver_boundary, 
-          color = "red", fill = "transparent")
+          color = "red", fill = "transparent") +
+  mapTheme
 
 #st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp", geometry = TRUE)
 ```
+
 
 Create a fishnet for Calgary.
 ```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
@@ -176,9 +180,12 @@ ggplot()+
 
 ## 2.2 Feature Engineering: Arc to R
 
-Created features in ArcGIS to process and join in R. 
-
-Join Calgary features to fishnet.
+Processed raster features for Calgary are exported from ArcGIS as tables containing zonal statistics by fishnet cell. These tables are then re-imported to R and joined with their respective fishnets. The list of features in question is:
+* Flood inundation
+* Pervious and impervious landcover
+* Elevation
+* Flow accumulation
+* Distance to river
 
 ```{r join engineered features to calg fishnet, warning = FALSE, message = FALSE, results = "hide"}
 #load in cleaned fishnet with partial cells removed
@@ -219,11 +226,13 @@ calg_dat <- calgary_fishnet %>%
          streamdist_min_log = log(streamdist_min)) %>% 
   na.omit() %>% 
     dplyr::mutate(streamdist_min_log = if_else(streamdist_min_log <0, 0, streamdist_min_log),
-         flowac_mean_log = if_else(flowac_mean_log <0, 0, flowac_mean_log))
+         flowac_mean_log = if_else(flowac_mean_log <0, 0, flowac_mean_log)) %>% 
+  na.omit()
   
 ```
 
-Join Denver features to fishnet.
+
+The same process is followed for Denver with the same features, excluding inundation.
 
 ```{r get_variables_denver, warning = FALSE, message = FALSE, results = "hide"}
 
@@ -258,22 +267,38 @@ denver_dat <- denver_fishnet %>%
     dplyr::mutate(streamdist_min_log = if_else(streamdist_min_log <0, 0, streamdist_min_log),
          flowac_mean_log = if_else(flowac_mean_log <0, 0, flowac_mean_log))
   
-              
+
 ```
 
 
-Set projections
+## 2.3 Mapping Features
 
-```{r transform}
+Mapping the fishnet of calgary with these features reveals...
+
+```{r mapping calgary inundation}
 calg_dat <- calg_dat %>%
   st_transform(crs = 3776)
 
-denver_dat <- denver_dat %>%
-  st_transform(crs = 2232)
+ggplot() +
+  geom_sf(data = calgary_boundary, aes(fill="#FFEFDE", color = "#656666"))+
+  geom_sf(data=calg_dat, aes(fill=as.factor(inund_sum)), alpha = 0.8, color = "#D3D3D9") +
+  scale_fill_manual(values = c("#FFEFDE", "#34696E"),
+                    labels = c("Not Inundated", "Inundated"), name = "") +
+  labs(title="Flood Inundation in Calgary") +
+  mapTheme
+
 ```
 
 
-## 2.3 What is our Data Telling Us?
+```{r mapping denver }
+denver_dat <- denver_dat %>%
+  st_transform(crs = 2232)
+
+```
+
+
+
+## 2.4 What is our Data Telling Us?
 
 
 How do our variables correlate with inundated/not inundated values?
@@ -309,7 +334,7 @@ ggplot(calg_PlotVariables) +
 
 ``` {r correlation matrix, warning = FALSE, message = FALSE, results = "hide"}
 
-corr <- calg_dat %>% 
+#corr <- calg_dat %>% 
   dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log) %>%  
   dplyr::summarise(inund_sum = (inund_sum),
             pervious_mean = (pervious_mean),
@@ -318,9 +343,9 @@ corr <- calg_dat %>%
             streamdist_min_log = (streamdist_min_log))
 
 
-calg_matrix = cor(corr)
+#calg_matrix = cor(corr)
 
-ggcorrplot(calg_matrix, method="square", colors = c("gray2", "wheat1", "darkorchid4"),
+#ggcorrplot(calg_matrix, method="square", colors = c("gray2", "wheat1", "darkorchid4"),
            tl.cex=7)
 
 ```
@@ -503,7 +528,6 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
                        positive = "1")
 
 ```
-
 
 ## 4.2 ROC Curve
 
