@@ -402,7 +402,7 @@ corr <- calg_dat %>%
          "Flow Accumulation (log)" = flowac_mean_log,
          "Elevation" = elevation_median,
          "Land Porosity" = pervious_mean,
-         "Inundation (observed" = inund_sum)
+         "Inundation (observed)" = inund_sum)
 
 
 calg_matrix = cor(corr)
@@ -742,16 +742,16 @@ ctrl <- trainControl(method = "cv",
                      number = 100, 
                      savePredictions = TRUE)
 
-cvFit <- train(as.factor(inund_sum) ~ .,
+inundFit <- train(as.factor(inund_sum) ~ .,
                data = calg_dat %>% 
                  as.data.frame() %>%
                  dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log), 
                method="glm", family="binomial",
                trControl = ctrl)
 
-cvFit
+inundFit
 
-#cvFit is our model trained to predict using the binomial logistic regression, or glm, method. 
+#inundFit is our model trained to predict using the binomial logistic regression, or glm, method. 
 ```
 Subsequently plotting a histogram of the accuracy for each fold allows us to trace its generalizability.
 The plot points out that a large number of folds (i.e., values from the "Resample" column) are clustered at high accuracy values. 
@@ -761,7 +761,7 @@ It gives the model confidence in moving to the final stage of the project -- app
 
 ```{r cv_hist, warning = FALSE, message = FALSE}
 
-ggplot(as.data.frame(cvFit$resample), aes(Accuracy)) + 
+ggplot(as.data.frame(inundFit$resample), aes(Accuracy)) + 
   geom_histogram() +
   scale_x_continuous(limits = c(0, 1)) +
   labs(x="Accuracy",
@@ -783,7 +783,7 @@ calg_dat_log <- calg_dat %>%
   dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry) 
 
 allPredictions <- 
-  predict(cvFit, calg_dat_log, type="prob")[,2]
+  predict(inundFit, calg_dat_log, type="prob")[,2]
   
 calg_pred <- 
   cbind(calg_dat_log,allPredictions) %>%
@@ -799,7 +799,7 @@ calg_pred <-
                       labels=as.character(quantile(calg_pred$allPredictions,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                      name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
+                      name="Predicted\nProbabilities(%)\n(Quantile\nBreaks)") +
   mapTheme +
   labs(title="Predicted Probability of Flood Inundation in Calgary")
 ```
@@ -845,7 +845,11 @@ calg_pred %>%
 
 ```
 
-In spite of the confusion matrix indicating low levels of false negatives proportionate to the data we processed for Calgary, the map helps spatially visualize how the model's errors are spread out, and what might be contributing to them. 
+In spite of the confusion matrix indicating low levels of false negatives proportionate to the data we processed for Calgary, the map helps spatially visualize how the model's errors are spread out, and what might be contributing to them:
+
+* Flow Accumulation ...?
+
+* Land Cover ... ? 
 
 
 ## 5.2 Predictions for Denver
@@ -942,4 +946,24 @@ Charlie + Riddhi
 ## 6.1 Endnotes
 
 1. Hastie, T., Tibshirani, R., Friedman, J. 2009. The Elements of Statistical Learning: Data Mining, Interference, and Prediction. Second Ed. Available at: https://link.springer.com/book/10.1007/978-0-387-84858-7
+
+
+
+``` {r code test}
+
+ggplot() + 
+    geom_sf(data=denver_pred, aes(fill=factor(ntile(allPredictions,4))), 
+            colour=NA) +
+    scale_fill_manual(values = blues,
+                      labels=as.character(quantile(denver_pred$allPredictions,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                      name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
+   geom_sf(data=denver_hydro, color="#EDB025", size=20) +
+  labs(title="Predicted Probability of Flood Inundation in Denver",
+        subtitle="Based on a Logistic Regression Model trained on data from Calgary\nYellow Lines Mark Location of Existing Rivers & Streams",
+        caption = "Source: blah blah blah") +
+   mapTheme
+
+```
 
