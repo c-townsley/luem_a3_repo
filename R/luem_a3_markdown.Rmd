@@ -16,9 +16,33 @@ output:
 
 # 1. Introduction
 
-The purpose of this assignment is to...
+The purpose of this project is to...
 
 ...The Planning motivation for this algorithm and how we would deploy such an algorithm.
+
+
+**Hypothesis**
+
+We began by thinking of the factors that would influence and/or correlate with flood inundation....
+
+
+**Why Denver?**
+
+The choice of Denver as a comparison city against which to test the model we built on Calgary was based on a check of their geographical and demographic similarities. We noticed that:
+
+* Population and size..
+
+* Climate..
+
+* Hydro features..
+
+* While both metropolitan areas are at an elevation range of ___ to ___, both Calgary and Denver themselves are at a lower elevation than the mountains that surround them, so the variation in elevation within the cities' boundaries is not as dramatic as if we considered the DEM outside the cities' municipal boundaries. 
+
+
+**Project Structure**
+
+This project follows a machine learning workflow that....
+
 
 
 ## 1.1 Setup
@@ -27,11 +51,14 @@ The purpose of this assignment is to...
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
+
+options(scipen = 999)
+
 ```
 
 ```{r libraries, echo=FALSE}
@@ -47,6 +74,7 @@ library(pROC)
 library(kableExtra)
 library(tigris)
 library(viridis)
+library(RColorBrewer)
 ```
 
 ```{r themes, warning = FALSE, message = FALSE, results = "hide"}
@@ -128,7 +156,7 @@ ggplot()+
   geom_sf(data = calgary_fishnet,
           fill = "lightgrey")+
   geom_sf(data = calgary_boundary, 
-          color = "red", fill = "transparent") +
+          color = "#6E5321", fill = "transparent") +
   mapTheme
 
 #st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
@@ -151,31 +179,10 @@ ggplot()+
   geom_sf(data = denver_fishnet,
           color="darkgrey", fill = "lightgrey") +
   geom_sf(data = denver_boundary, 
-          color = "red", fill = "transparent") +
+          color = "#6E5321", fill = "transparent") +
   mapTheme
 
 #st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp", geometry = TRUE)
-```
-
-
-Create a fishnet for Calgary.
-```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
-
-calgary_fishnet <- st_make_grid(calgary_boundary,
-                        cellsize = 402.336,
-                        square = FALSE) %>% 
-  .[calgary_boundary] %>% 
-  st_sf() %>% 
-  mutate(uniqueID = rownames(.))
-
-ggplot()+
-  geom_sf(data = calgary_fishnet,
-          fill = "lightgrey")+
-  geom_sf(data = calgary_boundary, 
-          color = "red", fill = "transparent")
-
-#st_write(calgary_fishnet, "Calgary/Processed/calgary_fishnet/calgary_fishnet.shp", geometry = TRUE)
-
 ```
 
 ## 2.2 Feature Engineering: Arc to R
@@ -303,6 +310,8 @@ denver_dat <- denver_dat %>%
 
 How do our variables correlate with inundated/not inundated values?
 
+Note: we had to log adjust our Flow Accumulation and Distance to Stream variables to compensate the wide range of outliers in the data set. 
+
 ```{r wide_2_long}
 calg_PlotVariables <- calg_dat %>% 
   as.data.frame() %>%
@@ -310,6 +319,14 @@ calg_PlotVariables <- calg_dat %>%
     pivot_longer(cols = -inund_sum)
 
 ```
+
+The violin plots below shows how each variable is spread across 0/1 values of inundation. They visually indicate the relationship between the variables we assumed would cause / correlate to flooding, as a function of how we processed them with relation to Calgary's fishnet. For instance:
+
+* Fishnet cells at lower elevations are more inundated than those at higher elevations.
+
+* Fishnet cells at longer distances from a stream are not as inundated as those that are at shorter distances from a stream. 
+
+By confirming the hypotheses we started with, this quick plot gives us confidence in our variable selection before we proceed with building regression models. 
 
 
 ``` {r data spread, warning = FALSE, message = FALSE, results = "hide"}
@@ -332,47 +349,31 @@ ggplot(calg_PlotVariables) +
 ###use scales = free or free_y to plot values that are comparatively lower or higher
 ```
 
-``` {r correlation matrix, warning = FALSE, message = FALSE, results = "hide"}
 
-#corr <- calg_dat %>% 
-  dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log) %>%  
-  dplyr::summarise(inund_sum = (inund_sum),
-            pervious_mean = (pervious_mean),
-            elevation_median = (elevation_median),
-            flowac_mean_log = (flowac_mean_log),
-            streamdist_min_log = (streamdist_min_log))
+**How many fishnet cells in Calgary are inundated?**
 
+A quick calculation reveals that 509 of 5373, or 9.5% of fishnet cells in Calgary are inundated.
 
-#calg_matrix = cor(corr)
-
-#ggcorrplot(calg_matrix, method="square", colors = c("gray2", "wheat1", "darkorchid4"),
-           tl.cex=7)
-
-```
-
-
-How many fishnet cells in Calgary are inundated?
 
 ``` {r fishnet cell calcs, warning = FALSE, message = FALSE, results = "hide"}
-
-#calculate on calgary_dat
 
 calg_inund_fishnet <- calg_dat %>% 
   filter(inund_sum == 1)
 
 no_fishnets <-(509/5373)*100
 
-#About 509 of 5373, or 9.5% of fishnet cells in Calgary are inundated
+
 ```
 
 
 # 3. Logistic Regressions
 
-## 3.1 Test, Train, Repeat
+## 3.1 Test, Train, Correlate, Regress: Model 1
+
+Our first binomial regression model inputs the Calgary training set with the dependent variable set to "Inundation", and four independent variables, namely, Land Porosity (a binary derived from land cover), Elevation, Flow Accumulation, and Distance to a Stream.
+
 
 ```{r training_set, warning = FALSE, message = FALSE, results = "hide"}
-
-#change code for calgary_dat
 
 set.seed(3456)
 
@@ -390,31 +391,203 @@ inundTest  <- calg_dat[-trainIndex,]%>%
 ##p=0.70 indicates the 70/30 partition
 ```
 
+A quick correlation test reveals that there isn't too high a level of multicollinearity between the variables we have selected for our regression. 
 
-## 3.2 Regress
+``` {r correlation matrix, warning = FALSE, message = FALSE, results = "hide"}
 
-Now let’s estimate a logistic regression model. The binomial logit model runs in the `glm` function (generalized linear models). We specify the dependent variable as `preserve` and run the model on our training set `preserveTrain`.
+corr <- calg_dat %>%
+  as.data.frame() %>%
+  dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log) %>% 
+  rename("Distance to Stream (log)" = streamdist_min_log,
+         "Flow Accumulation (log)" = flowac_mean_log,
+         "Elevation" = elevation_median,
+         "Land Porosity" = pervious_mean,
+         "Inundation (observed" = inund_sum)
 
-Note how we can use the dplyr pipes right in the data parameter. We have to convert to a data frame because R won’t know how to run a regression on an sf.
 
-Let's look at the model output, we see that we have coefficients, and p-values, but no R-squared. There are other goodness of fit metrics we will look at. The AIC, though not on a 0-1 scale like R-squared, has a similar function in that it tells you about overall model fit, but not about error and accuracy.
+calg_matrix = cor(corr)
 
-We are not really interested in our coefficients other than their magnitude, directionality and p-value (generall). But for the record, the way the coefficients in a logistic regression are interpreted is different than in OLS - we are talking in terms of "odds" of an outcome occurring (in our case odds of land being preserved.). If we exponentiate the coefficient (`exp()`) we can interpret it as *all else equal* the exponentiated value being the increase or decrease in the odds of the outcome.
+ggcorrplot(calg_matrix, method="square", colors = c("#73BBBF", "#FDF4E9", "#92AF7E"),
+           tl.cex=7)
+
+```
+
+A logistic regression on the first model displays the following results:
+
+* The p-values indicate a high level of statistical significance for three out of four of our independent variables -- elevation, flow accumulation, and stream distance.
+
+* The Aikake Information Criterion (AIC) is a useful number when comparing models on the basis of their performance. When selecting multiple regression models, a lower AIC indicates a better model performance^1^. In this case, the AIC is **1253.8**.
+
+* In our next step, we exponentiate the coefficients to interpret their relationship to the likelihood of flood inundation.
 
 
-```{r firstModel, warining = FALSE, message = FALSE}
+```{r firstModel, warning = FALSE, message = FALSE}
 inundModel <- glm(inund_sum ~ ., 
                     family="binomial"(link="logit"), data = inundTrain %>%
                                                             as.data.frame() %>%
                                                             dplyr::select(-geometry, -uniqueID))
 summary(inundModel)
+```
+
+The exponentiated coefficients of the first model exhibit the following relationships between the dependent and independent variables:
+
+* All else equal, a unit change in Land Porosity _reduces_ the chances of inundation by 16.35% (this is awkward because Land Porosity is also a binary variable)
+* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 2.7%
+* All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 13.9%
+* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 38.7%
+
+
+``` {r firstModel coefficients, warning = FALSE, message = FALSE}
+
+## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
+## - or + sign indicates associated increase or decrease
+
+inundModel$coefficients
+
+inundModel_vars <- c("Land Porosity", "Elevation", "Flow Accumulation (log)", "Distance to Stream (log)")
+inundModel_coeffs <- c(((exp(-0.17860495) - 1) * 100), ((exp(-0.02753326) - 1) * 100), ((exp(0.13087261) - 1) * 100), ((exp(-0.49010423 ) - 1) * 100))
+
+inundModel_coefficients <- data.frame(inundModel_vars, inundModel_coeffs)
+
+inundModel_coefficients %>% 
+  kbl(caption = "Exponentiated Coefficients: Logistic Regression Model 1") %>% 
+   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+
+```
+
+
+## 3.2 Regress: Model 2 & 3
+
+
+Let's test out the results of some other models:
+
+
+**Model 2: Does 'Land Porosity' matter?**
+
+We eliminate Land Porosity, which did not exhibit statistical significance in our previous model.
+
+* The resulting model shows that all independent variables are statistically significant.
+
+* The AIC is marginally lower than our first model, at **1252.2**.
+
+
+```{r secondModel, warning = FALSE, message = FALSE}
+
+inundTrain_2 <- calg_dat[ trainIndex,] %>% 
+  dplyr::select(-flowac_mean, -streamdist_min, -pervious_mean)
+
+inundTest_2  <- calg_dat[-trainIndex,]%>% 
+  dplyr::select(-flowac_mean, -streamdist_min, -pervious_mean)
+
+
+inundModel_2 <- glm(inund_sum ~ ., 
+                    family="binomial"(link="logit"), data = inundTrain_2 %>%
+                                                            as.data.frame() %>%
+                                                            dplyr::select(-geometry, -uniqueID))
+summary(inundModel_2)
+
+```
+
+
+The exponentiated coefficients of the second model are not very different from the first model:
+
+* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 2.6%
+* All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 13.9%
+* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 38.4%
+
+
+``` {r secondModel coefficients, warning = FALSE, message = FALSE}
+
+## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
+## - or + sign indicates associated increase or decrease
+
+inundModel_2$coefficients
+
+inundModel2_vars <- c("Elevation", "Flow Accumulation (log)", "Distance to Stream (log)")
+inundModel2_coeffs <- c(((exp(-0.02727086) - 1) * 100), ((exp(0.13073865) - 1) * 100), ((exp(-0.48586608) - 1) * 100))
+
+inundModel2_coefficients <- data.frame(inundModel2_vars, inundModel2_coeffs)
+
+inundModel2_coefficients %>% 
+  kbl(caption = "Exponentiated Coefficients: Logistic Regression Model 2") %>% 
+   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+
+```
+
+**Model 3: What if we don't log-adjust our variables?**
+
+While carrying out a preliminary assessment of variable relationships, we log-adjusted Flow Accumulation and Distance to Stream to compress their range of values.
+
+But what happens if we use the non-adjusted variables in a logit model?
+
+
+* All variables except Land Porosity are statistically significant.
+
+* The AIC is lower than the previous two models at **1185.2** (compared to 1253.8 and 1252.2 for models 1 and 2 respectively).
+
+Does it mess with our coefficient interpretation?
+
+
+```{r thirdModel, warning = FALSE, message = FALSE}
+
+inundTrain_3 <- calg_dat[ trainIndex,] %>% 
+  dplyr::select(-flowac_mean_log, -streamdist_min_log)
+
+inundTest_3  <- calg_dat[-trainIndex,]%>% 
+  dplyr::select(-flowac_mean_log, -streamdist_min_log)
+
+
+inundModel_3 <- glm(inund_sum ~ ., 
+                    family="binomial"(link="logit"), data = inundTrain_3 %>%
+                                                            as.data.frame() %>%
+                                                            dplyr::select(-geometry, -uniqueID))
+summary(inundModel_3)
+
+```
+
+The exponentiated coefficients of the third model are different from the previous two models, in that the odds of inundation associated with non-log-adjusted Flow Accumulation and Distance to Streams is a _lot_ smaller:
+
+* All else equal, a unit change in Land Porosity _increases_ the chances of flood inundation by 22%
+* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 2.1%
+* All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 0.01%
+* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 0.42%
+
+
+This seems funky, given that a variation in distance from a stream should logically affect the odds of inundation a lot more than 0.42%.
+Also, since this project is less about statistical significance and more about exploring variables, perhaps including Land Porosity would be fun.
+
+We're glad (lol) we ran these options, but we're going to stick with our original model for the rest of the project ¯\_(ツ)_/¯
+
+``` {r thirdModel coefficients, warning = FALSE, message = FALSE}
+
+## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
+## - or + sign indicates associated increase or decrease
+
+inundModel_3$coefficients
+
+inundModel3_vars <- c("Land Porosity", "Elevation", "Flow Accumulation", "Distance to Stream")
+inundModel3_coeffs <- c(((exp(0.1989610743) - 1) * 100), ((exp(-0.0215381673) - 1) * 100), ((exp(0.0001608351) - 1) * 100), ((exp(-0.0042834696) - 1) * 100))
+
+inundModel3_coefficients <- data.frame(inundModel3_vars, inundModel3_coeffs)
+
+inundModel3_coefficients %>% 
+  kbl(caption = "Exponentiated Coefficients: Logistic Regression Model 2") %>% 
+   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 
 ```
 
 
 ## 3.3 Model Validation
 
-Using the `predict` function, we create a vector of classification probabilities we call `classProbs`. These are the predicted probability of a test set (`preserveTest`) fishnet cell being conserved conditional on our model. Setting the parameter `type="reponse"` returns probabilities that range from 0 to 1.
+**So, Is My House Going to Flood?**
+
+Well, it depends on where you live.
+
+The plots below illustrate a distribution of predicted probabilities, based on the training and test sets. 
+
+* The histogram illustrates the predicted probability of fishnet cells in Calgary being inundated, based on the conditions set by our first model. As the frequency distribution shows, the dataset exhibits a lower overall probability of inundation -- there are over 1200 fishnet cells with a 0-0.1 probability of inundation, whereas cells with a higher probability of inundation are much fewer.
+
+* The second plot is a measure of how well our data is predicting probabilities for "inundation" (1s) vs "no inundation" (0s), where the vertical line represents a 0.5 probability of inundation. In this case the values reflecting not inundated areas are clustered closer to zero, indicating a lower probability for inundation overall.
 
 
 ```{r predict_first}
@@ -425,8 +598,6 @@ hist(classProbs)
 ##histogram is for the whole dataset
 ##represents the probability that a cell will be inundated (x-axis), vs number of cells with that probability (y-axis)
 ```
-The plot below illustrates a distribution of predicted probabilities, based on the training and test sets. It is a measure of how well our data is predicting probabilities for "inundation" (1s) vs "no inundation" (0s), where the vertical line represents a 0.5 probability of inundation.
-In this case the values reflecting not inundated areas are clustered closer to zero, indicating a lower probability for inundation overall *(???)* 
 
 ```{r plot_preds}
 testProbs <- data.frame(obs = as.numeric(inundTest$inund_sum),
@@ -454,6 +625,7 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
 To test the model's prediction accuracy, we created a confusion matrix from which levels of error can be extrapolated.
 If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.923**, with the following sensitivity and specificity results:
 
+
 **Sensitivity & Specificity Analysis**
 _Predicted vs. Reference Values, 50% Cutoff_
 
@@ -472,7 +644,7 @@ _Predicted vs. Reference Values, 50% Cutoff_
 
 Overall, the model's true positive rate, i.e., the proportion of 1s predicted as 1s indicates its _sensitivity_, which in this case is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, i.e., the proportion of 0s accurately predicted as 0s is about 18 times greater than the number of 0s falsely predicted as 1s, indicating the model's _specificity_.
 
-It has an error rate of about 8% as derived from the accuracy (Error = Accuracy - 1), which is demonstrated by the fact that the model's 123 erroneous predictions (77+46) are only a small fraction of its 1488 accurate predictions (1414+74)
+It has an error rate of about 8% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 123 erroneous predictions (77+46) are only a small fraction of its 1488 accurate predictions (1414+74).
 
 ```{r confusion_matrix, message = FALSE, warning = FALSE}
 
@@ -485,7 +657,8 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 
 We experimented with the threshold cutoff to check how the model would respond, and found that:
 
-*The accuracy of a model with with a 75% threshold cutoff remains the same as the original model with a 50% cutoff. However, it contains slightly different levels of False Positive and False Negative predictions:
+The accuracy of a model with with a 75% threshold cutoff remains the same as the original model with a 50% cutoff.
+However, it contains slightly different levels of False Positive and False Negative predictions:
 
 
 **Sensitivity & Specificity Analysis**
@@ -499,7 +672,7 @@ _Predicted vs. Reference Values, 75% Cutoff_
 -------------------
 
 
-*Similarly, the accuracy of a model with a 25% cutoff is only marginally lower than the original model at 0.918, but it also exhibits a lower specificity:
+Similarly, the accuracy of a model with a 25% cutoff is only marginally lower than the original model at 0.918, but it also exhibits a lower specificity:
 
 
 **Sensitivity & Specificity Analysis**
@@ -531,11 +704,14 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 
 ## 4.2 ROC Curve
 
-The Receiver Operating Characteristic (ROC) curve for our original model with a 50% cutoff tells us that....
+**Run, These Are No Geese!!**
 
-The area under the curve is calculated as 0.947, which confirms that the model is able to predict flood inundation with a 95% accuracy. 
+The Receiver Operating Characteristic (ROC) curve for our original model with a 50% cutoff plots the True Positive Rate (Sensitivity) against the False Positive Rate (1 - Specificity) for the probability of flood inundation in Calgary.
 
-See Appendix 1 for more on ROC curves.
+It shows the trade-off between Sensitivity and Specificity in our test set against a random classifier where True Positive = False Positive (the light grey diagonal). In this case, the variation of the ROC curve away from the random classifier line, toward the top-right corner indicates a high rate of model accuracy.
+
+This is further confirmed by calculating the area under the curve as **0.947**, which confirms that the model is able to predict flood inundation with a 95% accuracy. 
+
 
 ```{r roc_curve, message = FALSE, warning = FALSE}
 
@@ -543,20 +719,21 @@ ggplot(testProbs, aes(d = obs, m = pred)) +
   geom_roc(n.cuts = 50, labels = FALSE) + 
   style_roc(theme = theme_grey) +
   geom_abline(slope = 1, intercept = 0, size = 1.5, color = 'grey') 
+
 ```
 
 ```{r auc, warning = FALSE}
 auc(testProbs$obs, testProbs$pred)
 ```
-## 4.3 Cross Validation for Generalizability
 
-The following section checks the accuracy of our predictions across 100 randomly generated test sets, to gauge its applicability to predict Denver's chances of inundation.
 
-Plotting a histogram of the accuracy for each fold allows us to trace its generalizability.
-The plot points out that a large number of folds (i.e., values from the "Resample" column) are clustered at high accuracy values. 
-This indicates a high level of generalizability -- a measure of the model's capacity to be applied to predict other sample sets -- in our case, flood inundation in Denver.
+## 4.3 Cross Validation
 
-It gives the model confidence in moving to the final stage of the project -- applying Calgary's flood inundation predictions to the city of Denver. 
+**It's Accurate but is it Generalizable?**
+
+The following section checks the accuracy of our predictions across 100 randomly generated test sets, to gauge its applicability in predicting Denver's chances of flood inundation.
+
+On average, the prediction accuracy across all 100 folds is 92%.
 
 
 ```{r k_fold, warning = FALSE, message = FALSE}
@@ -576,6 +753,11 @@ cvFit
 
 #cvFit is our model trained to predict using the binomial logistic regression, or glm, method. 
 ```
+Subsequently plotting a histogram of the accuracy for each fold allows us to trace its generalizability.
+The plot points out that a large number of folds (i.e., values from the "Resample" column) are clustered at high accuracy values. 
+This indicates a high level of generalizability -- a measure of the model's capacity to be applied to predict other sample sets -- in our case, flood inundation in Denver.
+
+It gives the model confidence in moving to the final stage of the project -- applying Calgary's flood inundation predictions to the city of Denver. 
 
 ```{r cv_hist, warning = FALSE, message = FALSE}
 
@@ -589,7 +771,11 @@ ggplot(as.data.frame(cvFit$resample), aes(Accuracy)) +
 
 # 5. Map Predictions
 
-Now that we have tuned our model, let’s predict for the entire dataset and assess our predictions.
+**The Moment We've Been Waiting For**
+
+We ran a lot of tests on our model, and are probably ready to use it for a few predictions, now. 
+
+## 5.1 Predictions for Calgary
 
 ```{r predict_whole, warning = FALSE, message= FALSE}
 
@@ -604,19 +790,14 @@ calg_pred <-
   mutate(allPredictions = round(allPredictions * 100)) 
 ```
 
-Now we map the predictions.
-
-What would you title this map? 
-
-Note how we use ntile in the aes parameter to create quintiles. (The quintile labels are created in the scale_fill_manual function.)
 
 ```{r predicted_map1, warning = FALSE, message = FALSE}
  ggplot() + 
-    geom_sf(data=calg_pred, aes(fill=factor(ntile(allPredictions,5))), 
+    geom_sf(data=calg_pred, aes(fill=factor(ntile(allPredictions,4))), 
             colour=NA) +
     scale_fill_manual(values = blues,
                       labels=as.character(quantile(calg_pred$allPredictions,
-                                                 c(0.1,.2,.4,.6,.8),
+                                                 c(0.2,.4,.6,.8),
                                                  na.rm=T)),
                       name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
   mapTheme +
@@ -627,10 +808,10 @@ Let’s map it again with the already calculated inundation types overlaid.
 
 ```{r predicted_map2, warning = FALSE, message = FALSE}
  ggplot() + 
-  geom_sf(data=calg_pred, aes(fill=factor(ntile(allPredictions,5))), colour=NA) +
+  geom_sf(data=calg_pred, aes(fill=factor(ntile(allPredictions,4))), colour=NA) +
   scale_fill_manual(values = blues,
                     labels=as.character(quantile(calg_pred$allPredictions,
-                                                 c(0.1,.2,.4,.6,.8),
+                                                 c(.2,.4,.6,.8),
                                                  na.rm=T)),
                     name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
   geom_sf(data=calg_pred  %>% 
@@ -641,17 +822,12 @@ Let’s map it again with the already calculated inundation types overlaid.
             fill="#F9E2B2", alpha=0.35,colour=NA) +  
   mapTheme +
   labs(title="Observed and Predicted Flood Inundation Areas",
-       subtitle="Yellow marks areas with observed 'inundation', all other taken as 'not inundated' for the purpose of binary regression modeling")
+       subtitle="Yellow marks areas with observed 'inundation', \nall other taken as 'not inundated' for the purpose of binary regression modeling")
 ```
 
-In spite of the confusion matrix indicating low levels of false negatives proportionate to the data we processed for Calgary, the map helps spatially visualize how the model's errors are spread out, and what might be contributing to them. 
+Looks like our predicted and observed values are close!
 
-There are a few reasons why the sensitivity and specificity indicators reflect the way they do in our model:
-
-*When processing zonal statistics in ArcGIS, we chose to measure inundation as a sum of intersecting fishnet cells. When converting it to binary data, we chose a threshold of "Inundation Sum = 16" to reflect a higher possible level of inundation. This could be a contributing factor to the way False Negatives are attributed across Calgary's map -- 
-
-*Our inundation data was extrapolated in ArcGIS from a raster layer where we subtracted the area of existing rivers, lakes, and streams from 'inundated' values, to more accurately reflect flood inundation external to water bodies. This could be reflecting a lack of observed .....
-
+How are the Sensitivity and Specificity values laid out on the map of Calgary? 
 
 
 ```{r error_map, warning = FALSE, message= FALSE}
@@ -662,40 +838,108 @@ calg_pred %>%
                               allPredictions >= 50 & inund_sum==0 ~ "False Positive")) %>%
   ggplot()+
   geom_sf(aes(fill = confResult), color = "transparent")+
-  scale_fill_manual(values = c("Red","Orange","Light Blue","Light Green"),
+  scale_fill_manual(values = c("#B0B0B3","#A2D3D8","#FFEFDE","#81996F"),
                     name="Outcomes")+
   labs(title="Confusion Metrics") +
   mapTheme
 
 ```
 
-*Does this type of model have more, less or the same level of usefulness as a raster-based site suitability? Why?*
+In spite of the confusion matrix indicating low levels of false negatives proportionate to the data we processed for Calgary, the map helps spatially visualize how the model's errors are spread out, and what might be contributing to them. 
 
-## Predictions for Denver
+
+## 5.2 Predictions for Denver
 
 ```{r predict_whole_denver, warning = FALSE, message= FALSE}
 
 denver_dat_log <- denver_dat %>% 
-  dplyr::select(uniqueID, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry) 
+  dplyr::select(uniqueID, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry)
 
 allPredictions_denver <- 
-  predict(cvFit, denver_dat_log, type="prob")[,2]
+  predict(cvFit, denver_dat_log, type="prob")
+
+str(allPredictions_denver)
+
+allPredictions_denver <- allPredictions_denver %>% dplyr::select(c(2))
   
 denver_pred <- 
   cbind(denver_dat_log,allPredictions_denver) %>%
-  mutate(allPredictions = round(allPredictions_denver * 10000000)) 
+  rename(allPredictions=X1)%>%
+  mutate(allPredictions = allPredictions* 10000000) %>% 
+    mutate(allPredictions = if_else(allPredictions >= 0.5, 1, 0))
+
+
 ```
 
+       
 ```{r predicted_map_denver, warning = FALSE, message = FALSE}
+
+
  ggplot() + 
-    geom_sf(data=denver_pred, aes(fill=factor(ntile(allPredictions,5))), 
+    geom_sf(data=denver_pred, aes(fill=factor(allPredictions)), 
             colour=NA) +
-    scale_fill_manual(values = blues,
-                      labels=as.character(quantile(denver_pred$allPredictions,
-                                                 c(0.1,.2,.4,.6,.8),
-                                                 na.rm=T)),
-                      name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
+    scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
+                      labels=c("0", "1"),
+                      name="Predicted\nProbabilities\n(Binary)") +
   mapTheme +
   labs(title="Predicted Probability of Flood Inundation in Denver",
-       subtitle="Based on a Logistic Regression Model trained on data from Calgary")
+        subtitle="Based on a Logistic Regression Model trained on data from Calgary\n",
+        caption = "Source: blah blah blah")
+  
 ```
+Does this line up with Denver's hydrological features?
+
+``` {r pred map 2 denver, warning = FALSE, message = FALSE}
+
+denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
+
+ ggplot() + 
+       geom_sf(data=denver_pred, aes(fill=factor(allPredictions)), 
+            colour=NA) +
+    scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
+                      labels=c("0", "1"),
+                      name="Predicted\nProbabilities\n(Binary)") +
+   geom_sf(data=denver_hydro, color="#EDB025", size=35, linejoin="round", lineend="round") +
+  labs(title="Predicted Probability of Flood Inundation in Denver",
+        subtitle="Based on a Logistic Regression Model trained on data from Calgary\nYellow Lines Mark Location of Existing Rivers & Streams",
+        caption = "Source: blah blah blah") +
+   mapTheme
+
+
+```
+Yes, it actually lines up very well!
+
+Phew, can't believe that worked...
+
+
+# 6. Conclusion
+
+Our model might not be the Oracle of Delphi, but given the large number of underlying assumptions, it works well on a number of fronts:
+
+* It has a high level of accuracy and generalizability, as shown by its accuracy of 92%, even on average across a 100-fold cross-validation test, and the high number of true negatives and positives compared to false negatives and false positives.
+
+* The predicted and observed values for Calgary line up well on the map, with variations observed in how each variable has been visualized - the former on an increasing categorical scale, and the later as a 0/1 binary.
+
+* ....
+
+This type of machine learning process differs from a site suitability study in that it builds an algorithm based on probability and predictions, rather than a visual assessment of existing site conditions. This can be helpful in situations like flood inundation mapping, when present-day data is required to communicate a range of odds for an event that might occur in the future. In addition to incorporating more data than a site suitability study, it can be a useful tool for policy-makers to drive disaster-response or land preservation programs. 
+
+If we were to run through this project again (we won't, but _if_ we were), we might do a few things differently:
+
+* Find a way to integrate land porosity through its run-off potential values, rather than use a simplified binary classification based on urbanized/non-urbanized land.
+
+* Incorporate some more variables from the stream network analysis, such as flow direction, that might help build the robustness of our model. 
+
+* ....
+
+For now, we're going to get some sleep.
+
+
+xx
+Charlie + Riddhi
+
+
+## 6.1 Endnotes
+
+1. Hastie, T., Tibshirani, R., Friedman, J. 2009. The Elements of Statistical Learning: Data Mining, Interference, and Prediction. Second Ed. Available at: https://link.springer.com/book/10.1007/978-0-387-84858-7
+
