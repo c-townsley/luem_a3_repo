@@ -51,9 +51,9 @@ This project follows a machine learning workflow that....
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 
@@ -187,7 +187,9 @@ ggplot()+
 
 ## 2.2 Feature Engineering: Arc to R
 
+**CT to check language**
 Processed raster features for Calgary are exported from ArcGIS as tables containing zonal statistics by fishnet cell. These tables are then re-imported to R and joined with their respective fishnets. The list of features in question is:
+
 * Flood inundation
 * Pervious and impervious landcover
 * Elevation
@@ -280,29 +282,180 @@ denver_dat <- denver_fishnet %>%
 
 ## 2.3 Mapping Features
 
+### Calgary
+
 Mapping the fishnet of calgary with these features reveals...
 
-```{r mapping calgary inundation}
+```{r calgary inundation map}
 calg_dat <- calg_dat %>%
   st_transform(crs = 3776)
 
 ggplot() +
-  geom_sf(data = calgary_boundary, aes(fill="#FFEFDE", color = "#656666"))+
-  geom_sf(data=calg_dat, aes(fill=as.factor(inund_sum)), alpha = 0.8, color = "#D3D3D9") +
-  scale_fill_manual(values = c("#FFEFDE", "#34696E"),
-                    labels = c("Not Inundated", "Inundated"), name = "") +
-  labs(title="Flood Inundation in Calgary") +
+  geom_sf(data=calg_dat, aes(fill=as.factor(inund_sum)), alpha = 0.8, color = NA) +
+  scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
+                    labels = c("Not Inundated", "Inundated"),
+                    name = "Observed\nFlooding") +
+  labs(title="Flood Inundation in Calgary",
+       subtitle="Based on observed flooding in Calgary in XX, 20XX",
+        caption = "Source: blah blah blah") +
   mapTheme
 
 ```
 
 
-```{r mapping denver }
-denver_dat <- denver_dat %>%
-  st_transform(crs = 2232)
+```{r calgary stream dist map}
+
+ggplot() +
+  geom_sf(data=calg_dat, aes(fill=factor(ntile(streamdist_min,4))), 
+            colour=NA) +
+  scale_fill_manual(values = yellows,
+                    labels=as.character(quantile(calg_dat$streamdist_min,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Distance\nfrom Rivers\n(Quantile Breaks)") +
+  labs(title="Distance from Rivers in Calgary",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
 
 ```
 
+
+```{r calgary fac map}
+
+ggplot() +
+  geom_sf(data=calg_dat, aes(fill=factor(ntile(flowac_mean,4))), 
+            colour=NA) +
+  scale_fill_manual(values = blues,
+                    labels=as.character(quantile(calg_dat$flowac_mean,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
+  labs(title="Precipitation Flow Accumulation in Calgary",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
+
+```
+
+
+```{r calgary pervious surface map}
+
+ggplot() +
+  geom_sf(data=calg_dat, aes(fill=factor(ntile(pervious_mean,4))), 
+            colour=NA) +
+  scale_fill_manual(values = greens,
+                    labels=as.character(quantile(calg_dat$pervious_mean,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Permeable\nSurface\n(Quantile\nBreaks)") +
+  labs(title="Permeable Surface in Calgary",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
+
+```
+
+
+```{r calgary elevation map}
+
+ggplot() +
+  geom_sf(data=calg_dat, aes(fill=factor(ntile(elevation_median,4))), 
+            colour=NA) +
+  scale_fill_manual(values = neutrals,
+                    labels=as.character(quantile(calg_dat$elevation_median,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Mean\nElevation\n(Quantile\nBreaks)") +
+  labs(title="Elevation in Calgary",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
+
+```
+
+
+
+
+
+### Denver
+
+Mapping the features for our comparison city, Denver, we see...
+
+```{r mapping denver }
+denver_dat <- denver_dat %>%
+  st_transform(crs = 2232)
+```
+
+
+```{r calgary stream dist map}
+
+ggplot() +
+  geom_sf(data=denver_dat, aes(fill=factor(ntile(streamdist_min,4))), 
+            colour=NA) +
+  scale_fill_manual(values = yellows,
+                    labels=as.character(quantile(denver_dat$streamdist_min,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Distance\nfrom Rivers\n(Quantile Breaks)") +
+  labs(title="Distance from Rivers in Denver",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
+
+```
+
+
+```{r denver fac map}
+
+ggplot() +
+  geom_sf(data=denver_dat, aes(fill=factor(ntile(flowac_mean,4))), 
+            colour=NA) +
+  scale_fill_manual(values = blues,
+                    labels=as.character(quantile(denver_dat$flowac_mean,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
+  labs(title="Precipitation Flow Accumulation in Denver",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
+
+```
+
+
+```{r denver pervious surface map}
+
+ggplot() +
+  geom_sf(data=denver_dat, aes(fill=factor(ntile(pervious_mean,4))), 
+            colour=NA) +
+  scale_fill_manual(values = greens,
+                    labels=as.character(quantile(denver_dat$pervious_mean,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Permeable\nSurface\n(Quantile\nBreaks)") +
+  labs(title="Permeable Surface in Denver",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
+
+```
+```{r denver elevation map}
+
+ggplot() +
+  geom_sf(data=denver_dat, aes(fill=factor(ntile(elevation_median,4))), 
+            colour=NA) +
+  scale_fill_manual(values = neutrals,
+                    labels=as.character(quantile(denver_dat$elevation_median,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Mean\nElevation\n(Quantile\nBreaks)") +
+  labs(title="Elevation in Denver",
+       subtitle="Based on XX",
+        caption = "Source: blah blah blah") +
+  mapTheme
+
+```
 
 
 ## 2.4 What is our Data Telling Us?
@@ -860,7 +1013,7 @@ denver_dat_log <- denver_dat %>%
   dplyr::select(uniqueID, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry)
 
 allPredictions_denver <- 
-  predict(cvFit, denver_dat_log, type="prob")
+  predict(inundFit, denver_dat_log, type="prob")
 
 str(allPredictions_denver)
 
