@@ -260,7 +260,7 @@ denv_pervious <- read.csv ("Denver/Processed/zonalstats_tables/denv_pervious_mea
   rename(pervious_mean = MEAN)
 
 denv_elevation <- read.csv("Denver/Processed/zonalstats_tables/denv_elevation_med.csv") %>% 
-    dplyr::select(uniqueID, MEDIAN) %>% 
+  dplyr::select(uniqueID, MEDIAN) %>% 
   rename(elevation_median = MEDIAN)
 
 
@@ -279,13 +279,15 @@ denver_dat <- denver_fishnet %>%
   left_join(denv_pervious, by = 'uniqueID') %>%
   left_join(denv_elevation, by = 'uniqueID') %>% 
   left_join(denv_flowac, by = 'uniqueID') %>% 
-  left_join(denv_streamdist, by = 'uniqueID') %>% 
+  left_join(denv_streamdist, by = 'uniqueID') %>%
+  mutate(flowac_mean = flowac_mean*0.3048,
+         streamdist_min = streamdist_min*0.3048) %>% 
     mutate(flowac_mean_log = log(flowac_mean),
          streamdist_min_log = log(streamdist_min)) %>% 
   na.omit() %>% 
     dplyr::mutate(streamdist_min_log = if_else(streamdist_min_log <0, 0, streamdist_min_log),
          flowac_mean_log = if_else(flowac_mean_log <0, 0, flowac_mean_log))
-  
+
 ```
 
 
@@ -463,13 +465,8 @@ ggplot() +
 ```{r denver elevation map}
 
 ggplot() +
-  geom_sf(data=denver_dat, aes(fill=factor(ntile(elevation_median,4))), 
+  geom_sf(data=denver_dat, aes(fill=elevation_median), 
             colour=NA) +
-  scale_fill_manual(values = neutrals,
-                    labels=as.character(quantile(denver_dat$elevation_median,
-                                                 c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Mean Elevation\n(Quantile Breaks\nin Feet)") +
   labs(title="Elevation in Denver",
         caption = "Source: webgis.com") +
   mapTheme
@@ -563,7 +560,7 @@ inundTest  <- calg_dat[-trainIndex,]%>%
 ##p=0.70 indicates the 70/30 partition
 ```
 
-A quick correlation test reveals that there isn't too high a level of multicollinearity between the variables we have selected for our regression. 
+A quick correlation test reveals that there isn't too high a level of multi-collinearity between the variables we have selected for our regression. 
 
 ``` {r correlation matrix, results = "hide"}
 
@@ -765,7 +762,9 @@ The plots below illustrate a distribution of predicted probabilities, based on t
 ```{r predict_first}
 classProbs <- predict(inundModel, inundTest, type="response")
 
+
 hist(classProbs)
+  
 
 ##histogram is for the whole dataset
 ##represents the probability that a cell will be inundated (x-axis), vs number of cells with that probability (y-axis)
@@ -782,8 +781,8 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
   ylab("Frequency") +
   geom_vline(xintercept = .5) +
   scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
-                      labels = c("Not Inundated","Inundated"),
-                      name = "")+
+                      labels = c("Not Inundated","Inundated")) +
+  labs(title = "Number of Fishnet Cells Associated with Flooding in Calgary")+
   plotTheme
 
 
@@ -952,10 +951,13 @@ We ran a lot of tests on our model, and are probably ready to use it for a few p
 ```{r predict_whole, warning = FALSE, message= FALSE}
 
 calg_dat_log <- calg_dat %>% 
-  dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry) 
+  dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry)
+
+calg_dat2 <- calg_dat %>% 
+  dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_median, flowac_mean, streamdist_min, geometry)
 
 allPredictions <- 
-  predict(inundFit, calg_dat_log, type="prob")[,2]
+  predict(inundFit, calg_dat2, type="prob")[,2]
   
 calg_pred <- 
   cbind(calg_dat_log,allPredictions) %>%
@@ -1032,18 +1034,11 @@ denver_dat_log <- denver_dat %>%
   dplyr::select(uniqueID, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry)
 
 allPredictions_denver <- 
-  predict(inundFit, denver_dat_log, type="prob")
-
-str(allPredictions_denver)
-
-allPredictions_denver <- allPredictions_denver %>% dplyr::select(c(2))
+  predict(inundFit, denver_dat_log, type="prob")[,2]
   
 denver_pred <- 
-  cbind(denver_dat_log,allPredictions_denver) %>%
-  rename(allPredictions=X1)%>%
-  mutate(allPredictions = allPredictions* 10000000) %>% 
-    mutate(allPredictions = if_else(allPredictions >= 0.5, 1, 0))
-
+  cbind(denver_dat_log, allPredictions_denver) %>% 
+  mutate(allPredictions_denver = round(allPredictions_denver * 100)) 
 
 ```
 
@@ -1052,7 +1047,7 @@ denver_pred <-
 
 
  ggplot() + 
-    geom_sf(data=denver_pred, aes(fill=factor(allPredictions)), 
+    geom_sf(data=denver_pred, aes(fill=factor(allPredictions_denver)), 
             colour=NA) +
     scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
                       labels=c("0", "1"),
@@ -1061,6 +1056,7 @@ denver_pred <-
   labs(title="Predicted Probability of Flood Inundation in Denver",
         subtitle="Based on a Logistic Regression Model trained on data from Calgary\n",
         caption = "Source: blah blah blah")
+
   
 ```
 Does this line up with Denver's hydrological features?
