@@ -1,5 +1,6 @@
 ---
-title: "CPLN 675_Assignment3"
+title: "Estimating a Flood Inundation Probability Map"
+subtitle: "CPLN 675_Assignment3"
 author: "Riddhi Batra & Charlie Townsley"
 date: "`r Sys.Date()`"
 output: 
@@ -14,32 +15,51 @@ output:
     highlight: tango
 ---
 
+
+
+
 # 1. Introduction
 
-The purpose of this project is to...
+The purpose of this project is to use existing flooding and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated and the flooding caused over $5 billion in property damage.^1^
 
-...The Planning motivation for this algorithm and how we would deploy such an algorithm.
+Predictive flood modeling has important implications for the field of environmental planning. Floods cause most natural-disaster losses in the United States and are responsible for an annual average of nearly $8 billion in damage.^2^ Furthermore, as more people develop property in flood-prone areas, inundation induced losses will continue to increase. In the hands of government and community organizations, the results from predictive models are vital for helping cities plan, prepare, and respond to flooding.
 
+How this differs from other approaches...
 
-**Hypothesis**
-
-We began by thinking of the factors that would influence and/or correlate with flood inundation....
-
-
-**Why Denver?**
-
-The choice of Denver as a comparison city against which to test the model we built on Calgary was based on a check of their geographical and demographic similarities. We noticed that:
-
-* Population and size..
-
-* Climate..
-
-* Hydro features..
-
-* While both metropolitan areas are at an elevation range of ___ to ___, both Calgary and Denver themselves are at a lower elevation than the mountains that surround them, so the variation in elevation within the cities' boundaries is not as dramatic as if we considered the DEM outside the cities' municipal boundaries. 
+This project suggests it is important for cities that face the potential of flooding but have limited inundation history to study comparable cities to better understand their own flood exposure.
 
 
-**Project Structure**
+## Why Denver?
+
+We chose Denver, Colorado as our comparison city for estimating flooding because of key similarities. We observed that:
+
+* Both cities straddle rivers and are adjacent to the Rocky Mountains
+
+* Both Calgary and Denver cover a large land area (319 mi^2^ vs. 155 mi^2^)
+
+* They have similar levels of annual precipitation (16.7 in for Calgary and 8-15 in for Denver)
+
+* They are both at high elevations (3,400 ft for Calgary, 5,400 ft for Denver)
+
+* They both have flooded in the past
+
+
+## Hypothesis
+
+We began by thinking of the factors that could influence and/or correlate with flood inundation. Based on 
+
+We hypothesized that the probability of a grid cell in our model to flood is a function of 
+
+land cover permeability (perviousness?)
+
+Elevation
+
+Where water has a natural tendency to flow based on elevation.
+
+Proximity to rivers.
+
+
+## Project Structure
 
 This project follows a machine learning workflow that....
 
@@ -49,7 +69,7 @@ This project follows a machine learning workflow that....
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
@@ -77,7 +97,7 @@ library(viridis)
 library(RColorBrewer)
 ```
 
-```{r themes, warning = FALSE, message = FALSE, results = "hide"}
+```{r themes, results = "hide"}
 
 mapTheme <- theme(plot.title =element_text(size=12),
                   plot.subtitle = element_text(size=8),
@@ -128,7 +148,7 @@ neutrals <- c("#FDF4E9", "#FFEFDE", "#F6D7B2", "#D6B28B", "#A58565")
 
 ## 1.2 Load Data
 
-```{r load_data, warning = FALSE, message = FALSE, results = "hide"}
+```{r load_data, results = "hide"}
 denver_boundary <-read_sf("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_bound/denver_bound.shp")
 
 calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND_LIMIT.shp")
@@ -143,7 +163,7 @@ calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND
 
 Create a fishnet for Calgary to do processing in ArcGIS.
 
-```{r create_fishnets_calgary, warning = FALSE, message = FALSE, results = "hide"}
+```{r create_fishnets_calgary, results = "hide"}
 
 calgary_fishnet <- st_make_grid(calgary_boundary,
                         cellsize = 402.336,
@@ -166,7 +186,7 @@ ggplot()+
 
 Create a fishnet for Denver to do processing in ArcGIS.
 
-```{r create_fishnets_denver, warning = FALSE, message = FALSE, results = "hide"}
+```{r create_fishnets_denver, results = "hide"}
 
 denver_fishnet <- st_make_grid(denver_boundary,
                         cellsize = 1320,
@@ -185,18 +205,13 @@ ggplot()+
 #st_write(denver_fishnet, "Denver/Processed/R exports/denver_fishnet/denver_fishnet.shp", geometry = TRUE)
 ```
 
+
 ## 2.2 Feature Engineering: Arc to R
 
-**CT to check language**
-Processed raster features for Calgary are exported from ArcGIS as tables containing zonal statistics by fishnet cell. These tables are then re-imported to R and joined with their respective fishnets. The list of features in question is:
+After creating fishnets for Calgary and Denver in R, we exported them as shapefiles for processing in ArcGIS. We created tables of zonal statistics from relevant raster data, by fishnet cell, in ArcGIS. Then, we brought these tables back into R and joined each table with their respective city's fishnet.
 
-* Flood inundation
-* Pervious and impervious landcover
-* Elevation
-* Flow accumulation
-* Distance to river
+```{r join engineered features to calg fishnet, results = "hide"}
 
-```{r join engineered features to calg fishnet, warning = FALSE, message = FALSE, results = "hide"}
 #load in cleaned fishnet with partial cells removed
 calgary_fishnet <-  read_sf("Calgary/Processed/calgary_fishnet_nozeros/calgary_fishnet_nozeros.shp")
 
@@ -214,11 +229,9 @@ calg_elevation <- read.csv("Calgary/Processed/zonalstats_tables/calg_elevation_m
     dplyr::select(uniqueID, MEDIAN) %>% 
   rename(elevation_median = MEDIAN)
 
-
 calg_flowac <- read.csv("Calgary/Processed/zonalstats_tables/calg_flowac_mean.csv") %>% 
     dplyr::select(uniqueID, MEAN) %>% 
   rename(flowac_mean = MEAN)
-
 
 calg_streamdist <- read.csv("Calgary/Processed/zonalstats_tables/calg_dist2stream_min.csv") %>% 
     dplyr::select(uniqueID, MIN) %>% 
@@ -240,10 +253,7 @@ calg_dat <- calgary_fishnet %>%
   
 ```
 
-
-The same process is followed for Denver with the same features, excluding inundation.
-
-```{r get_variables_denver, warning = FALSE, message = FALSE, results = "hide"}
+```{r get_variables_denver, results = "hide"}
 
 denv_pervious <- read.csv ("Denver/Processed/zonalstats_tables/denv_pervious_mean.csv") %>% 
   dplyr::select(uniqueID, MEAN) %>% 
@@ -276,15 +286,19 @@ denver_dat <- denver_fishnet %>%
     dplyr::mutate(streamdist_min_log = if_else(streamdist_min_log <0, 0, streamdist_min_log),
          flowac_mean_log = if_else(flowac_mean_log <0, 0, flowac_mean_log))
   
-
 ```
 
 
-## 2.3 Mapping Features
-
 ### Calgary
 
-Mapping the fishnet of calgary with these features reveals...
+Below are the features we created for Calgary:
+
+* Flood inundation
+* Pervious and impervious landcover
+* Elevation
+* Flow accumulation
+* Distance to river
+
 
 ```{r calgary inundation map}
 calg_dat <- calg_dat %>%
@@ -296,12 +310,14 @@ ggplot() +
                     labels = c("Not Inundated", "Inundated"),
                     name = "Observed\nFlooding") +
   labs(title="Flood Inundation in Calgary",
-       subtitle="Based on observed flooding in Calgary in XX, 20XX",
-        caption = "Source: blah blah blah") +
+       subtitle="Based on observed flooding in Calgary",
+        caption = "Source: CPLN 675") +
   mapTheme
-
 ```
 
+The Calgary flood inundation raster data we worked with contained four values: inundated, not inundated, rivers/water bodies, and clouds. We reclassified this layer so that everything inundated = 1, and everything else = 0. We then used Zonal Statistics as Table in Arc to calculate the sum of inundated raster cells for each fishnet cell. Finally, we changed these sum values into a binary in R. Every fishnet cell that had more than 16 inundated raster cells became equal to 1, and every other cell became equal to zero.
+
+**Note: the Calgary inundation raster layer did not cover the entire city boundary. Therefore, the fishnet cells outside of the raster layer were removed from further processing.
 
 ```{r calgary stream dist map}
 
@@ -312,13 +328,15 @@ ggplot() +
                     labels=as.character(quantile(calg_dat$streamdist_min,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                    name = "Distance\nfrom Rivers\n(Quantile Breaks)") +
+                    name = "Distance\n(Quantile Breaks\nin Meters)") +
   labs(title="Distance from Rivers in Calgary",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+      subtitle="Based on Calgary Hydrology Data",
+      caption = "Source: data.calgary.ca") +
   mapTheme
 
 ```
+
+We used the distance accumulation tool to create a raster layered where each pixel was equal to its distance from a river. We then set each fishnet cell in the resulting table equal to the minimum distance to a river in that cell. We thought it best to over-sample cells near rivers rather than under-sample, because our model is based on riverine flooding.
 
 
 ```{r calgary fac map}
@@ -332,11 +350,13 @@ ggplot() +
                                                  na.rm=T)),
                     name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
   labs(title="Precipitation Flow Accumulation in Calgary",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+       subtitle="Based on Calgary Elevation Data",
+        caption = "Source: 18M DEM, CPLN 675") +
   mapTheme
 
 ```
+
+We used the DEM elevation layer to calculate flow accumulation in ArcGIS. Flow accumulation approximates where water that falls within city boundaries during a rain event would flow to by assigning each raster cell a value equal to the amount of cells that "flow" into it (based on elevation and flow direction). We then set each fishnet cell equal to the mean flow accumulation value it contained.
 
 
 ```{r calgary pervious surface map}
@@ -350,11 +370,13 @@ ggplot() +
                                                  na.rm=T)),
                     name = "Permeable\nSurface\n(Quantile\nBreaks)") +
   labs(title="Permeable Surface in Calgary",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+       subtitle="Based on Calgary Land Cover Data",
+        caption = "Source: data.calgary.ca") +
   mapTheme
 
 ```
+
+We reclassified land cover raster data in Arc into two categories pervious surface = 1, and impervious surface = 0. We then set each fishnet cell in the resulting table equal to the mean of the pervious raster cells it contained. This was to account for a high amount of local variation in permeability.
 
 
 ```{r calgary elevation map}
@@ -366,21 +388,19 @@ ggplot() +
                     labels=as.character(quantile(calg_dat$elevation_median,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                    name = "Mean\nElevation\n(Quantile\nBreaks)") +
+                    name = "Mean Elevation\n(Quantile Breaks\nin Meters)") +
   labs(title="Elevation in Calgary",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+        caption = "Source: CPLN 675") +
   mapTheme
 
 ```
 
-
-
+For elevation, we simply used the DEM for Calgary and set each fishnet cell equal to the median elevation in that cell.
 
 
 ### Denver
 
-Mapping the features for our comparison city, Denver, we see...
+We performed the exact same operations for the Denver features, excluding inundation which we're setting out to predict.
 
 ```{r mapping denver }
 denver_dat <- denver_dat %>%
@@ -388,7 +408,7 @@ denver_dat <- denver_dat %>%
 ```
 
 
-```{r calgary stream dist map}
+```{r denver stream dist map}
 
 ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(streamdist_min,4))), 
@@ -397,10 +417,10 @@ ggplot() +
                     labels=as.character(quantile(denver_dat$streamdist_min,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                    name = "Distance\nfrom Rivers\n(Quantile Breaks)") +
+                    name = "Distance\n(Quantile Breaks\n in Feet)") +
   labs(title="Distance from Rivers in Denver",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+       subtitle="Based on Denver Hydrology Data",
+        caption = "Source: Denver Open Data Catalog") +
   mapTheme
 
 ```
@@ -417,8 +437,8 @@ ggplot() +
                                                  na.rm=T)),
                     name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
   labs(title="Precipitation Flow Accumulation in Denver",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+       subtitle="Based on Denver Elevation Data",
+        caption = "Source: webgis.com") +
   mapTheme
 
 ```
@@ -435,8 +455,8 @@ ggplot() +
                                                  na.rm=T)),
                     name = "Permeable\nSurface\n(Quantile\nBreaks)") +
   labs(title="Permeable Surface in Denver",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+       subtitle="Based on Denver Land Cover Data",
+        caption = "Source: Denver Regional Council of Governments Regional Data Catalog") +
   mapTheme
 
 ```
@@ -449,10 +469,9 @@ ggplot() +
                     labels=as.character(quantile(denver_dat$elevation_median,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                    name = "Mean\nElevation\n(Quantile\nBreaks)") +
+                    name = "Mean Elevation\n(Quantile Breaks\nin Feet)") +
   labs(title="Elevation in Denver",
-       subtitle="Based on XX",
-        caption = "Source: blah blah blah") +
+        caption = "Source: webgis.com") +
   mapTheme
 
 ```
@@ -482,7 +501,7 @@ The violin plots below shows how each variable is spread across 0/1 values of in
 By confirming the hypotheses we started with, this quick plot gives us confidence in our variable selection before we proceed with building regression models. 
 
 
-``` {r data spread, warning = FALSE, message = FALSE, results = "hide"}
+``` {r data spread, results = "hide"}
 
 #violin plots
 #change code for for calgary_dat
@@ -508,7 +527,7 @@ ggplot(calg_PlotVariables) +
 A quick calculation reveals that 509 of 5373, or 9.5% of fishnet cells in Calgary are inundated.
 
 
-``` {r fishnet cell calcs, warning = FALSE, message = FALSE, results = "hide"}
+``` {r fishnet cell calcs, results = "hide"}
 
 calg_inund_fishnet <- calg_dat %>% 
   filter(inund_sum == 1)
@@ -526,7 +545,7 @@ no_fishnets <-(509/5373)*100
 Our first binomial regression model inputs the Calgary training set with the dependent variable set to "Inundation", and four independent variables, namely, Land Porosity (a binary derived from land cover), Elevation, Flow Accumulation, and Distance to a Stream.
 
 
-```{r training_set, warning = FALSE, message = FALSE, results = "hide"}
+```{r training_set, results = "hide"}
 
 set.seed(3456)
 
@@ -546,7 +565,7 @@ inundTest  <- calg_dat[-trainIndex,]%>%
 
 A quick correlation test reveals that there isn't too high a level of multicollinearity between the variables we have selected for our regression. 
 
-``` {r correlation matrix, warning = FALSE, message = FALSE, results = "hide"}
+``` {r correlation matrix, results = "hide"}
 
 corr <- calg_dat %>%
   as.data.frame() %>%
@@ -569,12 +588,12 @@ A logistic regression on the first model displays the following results:
 
 * The p-values indicate a high level of statistical significance for three out of four of our independent variables -- elevation, flow accumulation, and stream distance.
 
-* The Aikake Information Criterion (AIC) is a useful number when comparing models on the basis of their performance. When selecting multiple regression models, a lower AIC indicates a better model performance^1^. In this case, the AIC is **1253.8**.
+* The Aikake Information Criterion (AIC) is a useful number when comparing models on the basis of their performance. When selecting multiple regression models, a lower AIC indicates a better model performance.^3^ In this case, the AIC is **1253.8**.
 
 * In our next step, we exponentiate the coefficients to interpret their relationship to the likelihood of flood inundation.
 
 
-```{r firstModel, warning = FALSE, message = FALSE}
+```{r firstModel}
 inundModel <- glm(inund_sum ~ ., 
                     family="binomial"(link="logit"), data = inundTrain %>%
                                                             as.data.frame() %>%
@@ -590,7 +609,7 @@ The exponentiated coefficients of the first model exhibit the following relation
 * All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 38.7%
 
 
-``` {r firstModel coefficients, warning = FALSE, message = FALSE}
+``` {r firstModel coefficients}
 
 ## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
 ## - or + sign indicates associated increase or decrease
@@ -624,7 +643,7 @@ We eliminate Land Porosity, which did not exhibit statistical significance in ou
 * The AIC is marginally lower than our first model, at **1252.2**.
 
 
-```{r secondModel, warning = FALSE, message = FALSE}
+```{r secondModel}
 
 inundTrain_2 <- calg_dat[ trainIndex,] %>% 
   dplyr::select(-flowac_mean, -streamdist_min, -pervious_mean)
@@ -649,7 +668,7 @@ The exponentiated coefficients of the second model are not very different from t
 * All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 38.4%
 
 
-``` {r secondModel coefficients, warning = FALSE, message = FALSE}
+``` {r secondModel coefficients}
 
 ## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
 ## - or + sign indicates associated increase or decrease
@@ -681,7 +700,7 @@ But what happens if we use the non-adjusted variables in a logit model?
 Does it mess with our coefficient interpretation?
 
 
-```{r thirdModel, warning = FALSE, message = FALSE}
+```{r thirdModel}
 
 inundTrain_3 <- calg_dat[ trainIndex,] %>% 
   dplyr::select(-flowac_mean_log, -streamdist_min_log)
@@ -711,7 +730,7 @@ Also, since this project is less about statistical significance and more about e
 
 We're glad (lol) we ran these options, but we're going to stick with our original model for the rest of the project ¯\_(ツ)_/¯
 
-``` {r thirdModel coefficients, warning = FALSE, message = FALSE}
+``` {r thirdModel coefficients}
 
 ## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
 ## - or + sign indicates associated increase or decrease
@@ -799,7 +818,7 @@ Overall, the model's true positive rate, i.e., the proportion of 1s predicted as
 
 It has an error rate of about 8% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 123 erroneous predictions (77+46) are only a small fraction of its 1488 accurate predictions (1414+74).
 
-```{r confusion_matrix, message = FALSE, warning = FALSE}
+```{r confusion_matrix}
 
 testProbs$predClass  = ifelse(testProbs$pred > .5 ,1,0)
 
@@ -1098,7 +1117,11 @@ Charlie + Riddhi
 
 ## 6.1 Endnotes
 
-1. Hastie, T., Tibshirani, R., Friedman, J. 2009. The Elements of Statistical Learning: Data Mining, Interference, and Prediction. Second Ed. Available at: https://link.springer.com/book/10.1007/978-0-387-84858-7
+1. City of Calgary. “Flooding in Calgary - Flood of 2013.” Https://Www.Calgary.Ca. Accessed March 27, 2023. https://www.calgary.ca/content/www/en/home/water/flooding/history-calgary.html.
+
+2. “Flood Inundation Mapping (FIM) Program.” n.d. U.S. Geological Survey. Accessed February 27, 2023. https://www.usgs.gov/mission-areas/water-resources/science/flood-inundation-mapping-fim-program.
+
+3. Hastie, T., Tibshirani, R., Friedman, J. 2009. The Elements of Statistical Learning: Data Mining, Interference, and Prediction. Second Ed. Available at: https://link.springer.com/book/10.1007/978-0-387-84858-7
 
 
 
@@ -1117,6 +1140,26 @@ ggplot() +
         subtitle="Based on a Logistic Regression Model trained on data from Calgary\nYellow Lines Mark Location of Existing Rivers & Streams",
         caption = "Source: blah blah blah") +
    mapTheme
+
+
+ggplot() + 
+    geom_sf(data=denver_pred, aes(fill=allPredictions), 
+            colour=NA) +
+    scale_fill_viridis(
+                      alpha = 1,
+                      begin = 1,
+                      end = 0.6,
+                      direction = 1,
+                      discrete = FALSE,
+                      option = "A") +
+   geom_sf(data=denver_hydro, color="#EDB025", size=20) +
+  labs(title="Predicted Probability of Flood Inundation in Denver",
+        subtitle="Based on a Logistic Regression Model trained on data from Calgary\nYellow Lines Mark Location of Existing Rivers & Streams",
+        caption = "Source: blah blah blah") +
+   mapTheme
+
+
+
 
 ```
 
