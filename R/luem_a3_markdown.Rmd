@@ -71,9 +71,9 @@ This project follows a machine learning workflow that....
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
-knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 
@@ -795,7 +795,7 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
 ## 4.1 Confusion Metrics
 
 To test the model's prediction accuracy, we created a confusion matrix from which levels of error can be extrapolated.
-If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.923**, with the following sensitivity and specificity results:
+If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.917**, with the following sensitivity and specificity results:
 
 
 **Sensitivity & Specificity Analysis**
@@ -804,19 +804,19 @@ _Predicted vs. Reference Values, 50% Cutoff_
 -------------------
 |   | 0    | 1    |
 -------------------
-| 0 | 1414 | 46   |
-| 1 | 77   | 74   |
+| 0 | 1397 | 92   |
+| 1 | 42   | 80   |
 -------------------
 
 
-* It has predicted 0 as 0, i.e. a _True Negative_, 1414 times
-* It has predicted 0 as 1, i.e. a _False Negative_, 77 times
-* It has predicted 1 as 0, i.e. a _False Positive_, 46 times
-* It has predicted 1 as 1, i.e. a _True Positive_, 74 times
+* It has predicted 0 as 0, i.e. a _True Negative_, 1397 times
+* It has predicted 0 as 1, i.e. a _False Negative_, 92 times
+* It has predicted 1 as 0, i.e. a _False Positive_, 42 times
+* It has predicted 1 as 1, i.e. a _True Positive_, 80 times
 
 Overall, the model's true positive rate, i.e., the proportion of 1s predicted as 1s indicates its _sensitivity_, which in this case is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, i.e., the proportion of 0s accurately predicted as 0s is about 18 times greater than the number of 0s falsely predicted as 1s, indicating the model's _specificity_.
 
-It has an error rate of about 8% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 123 erroneous predictions (77+46) are only a small fraction of its 1488 accurate predictions (1414+74).
+It has an error rate of about 8% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 134 erroneous predictions (92+42) are only a small fraction of its 1477 accurate predictions (1397+80).
 
 ```{r confusion_matrix}
 
@@ -829,7 +829,7 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 
 We experimented with the threshold cutoff to check how the model would respond, and found that:
 
-The accuracy of a model with with a 75% threshold cutoff remains the same as the original model with a 50% cutoff.
+The accuracy of a model with with a 75% threshold cutoff remains almost the same as the original model with a 50% cutoff, at **0.913**
 However, it contains slightly different levels of False Positive and False Negative predictions:
 
 
@@ -839,12 +839,12 @@ _Predicted vs. Reference Values, 75% Cutoff_
 -------------------
 |   | 0    | 1    |
 -------------------
-| 0 | 1454 | 118  |
-| 1 | 6    | 33   |
+| 0 | 1435 | 136  |
+| 1 | 4    | 36   |
 -------------------
 
 
-Similarly, the accuracy of a model with a 25% cutoff is only marginally lower than the original model at 0.918, but it also exhibits a lower specificity:
+Similarly, the accuracy of a model with a 25% cutoff is only marginally higher than the original model at **0.919**, but it also exhibits a lower specificity:
 
 
 **Sensitivity & Specificity Analysis**
@@ -853,8 +853,8 @@ _Predicted vs. Reference Values, 25% Cutoff_
 -------------------
 |   | 0    | 1    |
 -------------------
-| 0 | 1383 | 55   |
-| 1 | 77   | 96   |
+| 0 | 1356 | 48   |
+| 1 | 83   | 124  |
 -------------------
 
 
@@ -882,7 +882,7 @@ The Receiver Operating Characteristic (ROC) curve for our original model with a 
 
 It shows the trade-off between Sensitivity and Specificity in our test set against a random classifier where True Positive = False Positive (the light grey diagonal). In this case, the variation of the ROC curve away from the random classifier line, toward the top-right corner indicates a high rate of model accuracy.
 
-This is further confirmed by calculating the area under the curve as **0.947**, which confirms that the model is able to predict flood inundation with a 95% accuracy. 
+This is further confirmed by calculating the area under the curve as **0.947**, which confirms that the model is able to predict flood inundation with a 94.7% accuracy. 
 
 
 ```{r roc_curve, message = FALSE, warning = FALSE}
@@ -997,7 +997,7 @@ Let’s map it again with the already calculated inundation types overlaid.
        subtitle="Yellow marks areas with observed 'inundation', \nall other taken as 'not inundated' for the purpose of binary regression modeling")
 ```
 
-Looks like our predicted and observed values are close!
+Looks like our predicted and observed values are very close!
 
 How are the Sensitivity and Specificity values laid out on the map of Calgary? 
 
@@ -1021,7 +1021,7 @@ In spite of the confusion matrix indicating low levels of false negatives propor
 
 * Flow Accumulation ...?
 
-* Land Cover ... ? 
+* In pre-processing our data, we reclassified the Land Cover rasters for both cities to a 0/1 binary to indicate Land Porosity, where we kept urbanized and rocky land as "non-pervious", whereas all natural vegetation and marshes were "pervious". This assumption could have reduced the model's accuracy by reducing continuous run-off potential numbers to binary, thus reducing nuances in the relationship between Land Porosity and Inundation that the model could capture. 
 
 
 ## 5.2 Predictions for Denver
@@ -1096,7 +1096,7 @@ Our model might not be the Oracle of Delphi, but given the large number of under
 
 * The predicted and observed values for Calgary line up well on the map, with variations observed in how each variable has been visualized - the former on an increasing categorical scale, and the later as a 0/1 binary.
 
-* ....
+* It accurately placed predicted inundation in Denver along the location of Denver's existing streams, thus confirming its high level of accuracy and generalizability. 
 
 This type of machine learning process differs from a site suitability study in that it builds an algorithm based on probability and predictions, rather than a visual assessment of existing site conditions. This can be helpful in situations like flood inundation mapping, when present-day data is required to communicate a range of odds for an event that might occur in the future. In addition to incorporating more data than a site suitability study, it can be a useful tool for policy-makers to drive disaster-response or land preservation programs. 
 
