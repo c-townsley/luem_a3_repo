@@ -24,7 +24,7 @@ The purpose of this project is to use existing flooding and environmental data f
 
 Predictive flood modeling has important implications for the field of environmental planning. Floods cause most natural-disaster losses in the United States and are responsible for an annual average of nearly $8 billion in damage.^2^ Furthermore, as more people develop property in flood-prone areas, inundation induced losses will continue to increase. In the hands of government and community organizations, the results from predictive models are vital for helping cities plan, prepare, and respond to flooding.
 
-How this differs from other approaches...
+How this differs from other approaches... **Riddhi please write**
 
 This project suggests it is important for cities that face the potential of flooding but have limited inundation history to study comparable cities to better understand their own flood exposure.
 
@@ -46,22 +46,34 @@ We chose Denver, Colorado as our comparison city for estimating flooding because
 
 ## Hypothesis
 
-We began by thinking of the factors that could influence and/or correlate with flood inundation. Based on 
-
-We hypothesized that the probability of a grid cell in our model to flood is a function of 
-
-land cover permeability (perviousness?)
-
-Elevation
-
-Where water has a natural tendency to flow based on elevation.
-
-Proximity to rivers.
+We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images] (https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow based on elevation.
 
 
 ## Project Structure
 
-This project follows a machine learning workflow that....
+This project follows the workflow below, which the following sections describe in detail:
+
+1. Setup
+  + Gather open data from Calgary and Denver
+  + Process open data in ArcGIS to get our features of interest.
+
+2. Create Fishnets and Wrangle data
+  + Create a fishnet shapefile in R for each city
+  + Use the Zonal Statistics as Table tool in ArcGIS to transform raster features to fishnet cell-level information
+  + Join zonal statistics tables with fishnet shapefiles in R
+  + Explore data in R
+
+3. Run Logistic Regressions
+  + Train model on Calgary Data
+  + Refine model
+  + Validate model
+  
+4. Interpretation
+
+5. Map Predictions
+
+6. Conclude with Closing Thoughts
+
 
 
 
