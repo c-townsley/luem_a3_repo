@@ -19,6 +19,8 @@ output:
 
 # 1. Introduction
 
+_The link to our video can be found at: ..._
+
 The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta, Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated, and the flooding caused over $5 billion in property damage.^1^
 
 Predictive flood modeling has important implications for the field of environmental planning. Floods cause most natural-disaster losses in the United States and are responsible for an annual average of nearly $8 billion in damage.^2^ Furthermore, as more people develop property in flood-prone areas, inundation induced losses will continue to increase. In the hands of government and community organizations, the results from predictive models are vital for helping cities plan, prepare, and respond to flooding.
@@ -54,25 +56,25 @@ This project follows the workflow below, which the following sections describe i
      + Gather open data from Calgary and Denver
      + Process open data in ArcGIS to get our features of interest.
 
+
 2. Create Fishnets and Wrangle data
      + Create a fishnet shapefile in R for each city
      + Use the Zonal Statistics as Table tool in ArcGIS to transform raster features to fishnet cell-level information
      + Join zonal statistics tables with fishnet shapefiles in R
      + Explore data in R
 
+
 3. Run Logistic Regressions
      + Train model on Calgary Data
      + Refine model
      + Validate model
   
+
 4. Interpretation
 
 5. Map Predictions
 
 6. Conclude with Closing Thoughts
-
-
-_The link to our video can be found at: ..._
 
 
 ## 1 Setup
@@ -82,9 +84,9 @@ Load libraries, set working directories, write map and plot themes, and call-in 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 
@@ -331,18 +333,7 @@ The Calgary flood inundation raster data we worked with contained four values: i
 **Note: the Calgary inundation raster layer did not cover the entire city boundary. Therefore, the fishnet cells outside of the raster layer were removed from further processing.
 
 ```{r calgary stream dist map}
-
-ggplot() +
-  geom_sf(data=calg_dat, aes(fill=streamdist_min), color = NA) +
-  scale_fill_gradient(low = yellows[1], high = "#6E5321",
-                    name = "Distance\n(Quantile Breaks\nin Meters)") +
-  labs(title="Distance from Rivers in Calgary",
-      subtitle="Based on Calgary Hydrology Data",
-      caption = "Source: data.calgary.ca") +
-  mapTheme
-
-
-                    
+              
 ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(streamdist_min, 4))), 
             colour=NA) +
@@ -1060,6 +1051,7 @@ denver_pred <-
 
   
 ```
+
 Does this line up with Denver's hydrological features?
 
 ``` {r pred map 2 denver, warning = FALSE, message = FALSE}
@@ -1082,6 +1074,7 @@ denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
 
 
 ```
+
 Yes, it actually lines up very well!
 
 Phew, can't believe that worked...
@@ -1121,7 +1114,7 @@ Charlie + Riddhi
 
 ## 6.1 Endnotes
 
-1. City of Calgary. “Flooding in Calgary - Flood of 2013.” Https://Www.Calgary.Ca. Accessed March 27, 2023. https://www.calgary.ca/content/www/en/home/water/flooding/history-calgary.html.
+1. City of Calgary. “Flooding in Calgary - Flood of 2013.” www.calgary.ca. Accessed March 27, 2023. https://www.calgary.ca/content/www/en/home/water/flooding/history-calgary.html.
 
 2. “Flood Inundation Mapping (FIM) Program.” n.d. U.S. Geological Survey. Accessed February 27, 2023. https://www.usgs.gov/mission-areas/water-resources/science/flood-inundation-mapping-fim-program.
 
