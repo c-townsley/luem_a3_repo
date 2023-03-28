@@ -1,6 +1,6 @@
 ---
 title: "Estimating a Flood Inundation Probability Map"
-subtitle: "CPLN 675_Assignment3"
+subtitle: "CPLN 675 Assignment3"
 author: "Riddhi Batra & Charlie Townsley"
 date: "`r Sys.Date()`"
 output: 
@@ -18,6 +18,8 @@ output:
 
 
 # 1. Introduction
+
+_The link to our video can be found at: ..._
 
 The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta, Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated, and the flooding caused over $5 billion in property damage.^1^
 
@@ -43,7 +45,7 @@ We chose Denver, Colorado as our comparison city for estimating flooding because
 
 ## Hypothesis
 
-We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images] (https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow and accumulation based on elevation and slope.
+We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images](https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow and accumulation based on elevation and slope.
 
 
 ## Project Structure
@@ -51,28 +53,28 @@ We began by thinking of which factors could influence and/or correlate with floo
 This project follows the workflow below, which the following sections describe in detail:
 
 1. Setup
-  + Gather open data from Calgary and Denver
-  + Process open data in ArcGIS to get our features of interest.
+     + Gather open data from Calgary and Denver
+     + Process open data in ArcGIS to get our features of interest.
+
 
 2. Create Fishnets and Wrangle data
-  + Create a fishnet shapefile in R for each city
-  + Use the Zonal Statistics as Table tool in ArcGIS to transform raster features to fishnet cell-level information
-  + Join zonal statistics tables with fishnet shapefiles in R
-  + Explore data in R
+     + Create a fishnet shapefile in R for each city
+     + Use the Zonal Statistics as Table tool in ArcGIS to transform raster features to fishnet cell-level information
+     + Join zonal statistics tables with fishnet shapefiles in R
+     + Explore data in R
+
 
 3. Run Logistic Regressions
-  + Train model on Calgary Data
-  + Refine model
-  + Validate model
+     + Train model on Calgary Data
+     + Refine model
+     + Validate model
   
+
 4. Interpretation
 
 5. Map Predictions
 
 6. Conclude with Closing Thoughts
-
-
-_The link to our video can be found at: ..._
 
 
 ## 1 Setup
@@ -82,9 +84,9 @@ Load libraries, set working directories, write map and plot themes, and call-in 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 
@@ -331,18 +333,7 @@ The Calgary flood inundation raster data we worked with contained four values: i
 **Note: the Calgary inundation raster layer did not cover the entire city boundary. Therefore, the fishnet cells outside of the raster layer were removed from further processing.
 
 ```{r calgary stream dist map}
-
-ggplot() +
-  geom_sf(data=calg_dat, aes(fill=streamdist_min), color = NA) +
-  scale_fill_gradient(low = yellows[1], high = "#6E5321",
-                    name = "Distance\n(Quantile Breaks\nin Meters)") +
-  labs(title="Distance from Rivers in Calgary",
-      subtitle="Based on Calgary Hydrology Data",
-      caption = "Source: data.calgary.ca") +
-  mapTheme
-
-
-                    
+              
 ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(streamdist_min, 4))), 
             colour=NA) +
@@ -1060,6 +1051,7 @@ denver_pred <-
 
   
 ```
+
 Does this line up with Denver's hydrological features?
 
 ``` {r pred map 2 denver, warning = FALSE, message = FALSE}
@@ -1082,6 +1074,7 @@ denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
 
 
 ```
+
 Yes, it actually lines up very well!
 
 Phew, can't believe that worked...
@@ -1089,6 +1082,9 @@ Phew, can't believe that worked...
 
 
 # 6. Conclusion
+
+
+**Prediction Defense**
 
 Our model might not be the Oracle of Delphi, but given the large number of underlying assumptions, it works well on a number of fronts:
 
@@ -1099,6 +1095,11 @@ Our model might not be the Oracle of Delphi, but given the large number of under
 * It accurately placed predicted inundation in Denver along the location of Denver's existing streams, thus confirming its high level of accuracy and generalizability. 
 
 This type of machine learning process differs from a site suitability study in that it builds an algorithm based on probability and predictions, rather than a visual assessment of existing site conditions. This can be helpful in situations like flood inundation mapping, when present-day data is required to communicate a range of odds for an event that might occur in the future. In addition to incorporating more data than a site suitability study, it can be a useful tool for policy-makers to drive disaster-response or land preservation programs. 
+
+It is also quicker than a more detailed, hydraulic model, to generate spatial scenarios of relative risk, that, for a city planning department can help prioritize how more detailed analytical resources are deployed.
+
+
+**Next Steps**
 
 If we were to run through this project again (we won't, but _if_ we were), we might do a few things differently:
 
@@ -1121,7 +1122,7 @@ Charlie + Riddhi
 
 ## 6.1 Endnotes
 
-1. City of Calgary. “Flooding in Calgary - Flood of 2013.” Https://Www.Calgary.Ca. Accessed March 27, 2023. https://www.calgary.ca/content/www/en/home/water/flooding/history-calgary.html.
+1. City of Calgary. “Flooding in Calgary - Flood of 2013.” www.calgary.ca. Accessed March 27, 2023. https://www.calgary.ca/content/www/en/home/water/flooding/history-calgary.html.
 
 2. “Flood Inundation Mapping (FIM) Program.” n.d. U.S. Geological Survey. Accessed February 27, 2023. https://www.usgs.gov/mission-areas/water-resources/science/flood-inundation-mapping-fim-program.
 
