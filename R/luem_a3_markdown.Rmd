@@ -83,9 +83,9 @@ This project follows the workflow below, which the following sections describe i
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 
@@ -336,18 +336,29 @@ The Calgary flood inundation raster data we worked with contained four values: i
 ```{r calgary stream dist map}
 
 ggplot() +
-  geom_sf(data=calg_dat, aes(fill=factor(ntile(streamdist_min,4))), 
-            colour=NA) +
-  scale_fill_manual(values = yellows,
-                    labels=as.character(quantile(calg_dat$streamdist_min,
-                                                 c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+  geom_sf(data=calg_dat, aes(fill=streamdist_min), color = NA) +
+  scale_fill_gradient(low = yellows[1], high = "#6E5321",
                     name = "Distance\n(Quantile Breaks\nin Meters)") +
   labs(title="Distance from Rivers in Calgary",
       subtitle="Based on Calgary Hydrology Data",
       caption = "Source: data.calgary.ca") +
   mapTheme
 
+
+                    
+ggplot() +
+  geom_sf(data=calg_dat, aes(fill=factor(ntile(streamdist_min, 4))), 
+            colour=NA) +
+  scale_fill_manual(values = yellows,
+                    labels= as.character(round(quantile(calg_dat$streamdist_min,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T))),
+                    name = "Distance\n(Quantile Breaks\nin Meters)") +
+  labs(title="Distance from Rivers in Calgary",
+      subtitle="Based on Calgary Hydrology Data",
+      caption = "Source: data.calgary.ca") +
+  mapTheme                    
+                    
 ```
 
 We used the distance accumulation tool to create a raster layered where each pixel was equal to its distance from a river. We then set each fishnet cell in the resulting table equal to the minimum distance to a river in that cell. We thought it best to over-sample cells near rivers rather than under-sample, because our model is based on riverine flooding.
@@ -359,9 +370,9 @@ ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(flowac_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = blues,
-                    labels=as.character(quantile(calg_dat$flowac_mean,
+                    labels= as.character(round(quantile(calg_dat$flowac_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+                                                 na.rm=T))),
                     name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
   labs(title="Precipitation Flow Accumulation in Calgary",
        subtitle="Based on Calgary Elevation Data",
@@ -379,11 +390,11 @@ ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(pervious_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = greens,
-                    labels=as.character(quantile(calg_dat$pervious_mean,
+                    labels= as.character(round(quantile(calg_dat$pervious_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Permeable\nSurface\n(Quantile\nBreaks)") +
-  labs(title="Permeable Surface in Calgary",
+                                                 na.rm=T), 2)),
+                    name = "Pervious\nSurface\n(Quantile\nBreaks)") +
+  labs(title="Pervious Surface in Calgary",
        subtitle="Based on Calgary Land Cover Data",
         caption = "Source: data.calgary.ca") +
   mapTheme
@@ -399,10 +410,10 @@ ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(elevation_median,4))), 
             colour=NA) +
   scale_fill_manual(values = neutrals,
-                    labels=as.character(quantile(calg_dat$elevation_median,
+                    labels= as.character(round(quantile(calg_dat$elevation_median,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Mean Elevation\n(Quantile Breaks\nin Meters)") +
+                                                 na.rm=T), 2)),
+                    name = "Mean Elevation\n(Quantile Breaks\nCategorical)") +
   labs(title="Elevation in Calgary",
         caption = "Source: CPLN 675") +
   mapTheme
@@ -428,10 +439,10 @@ ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(streamdist_min,4))), 
             colour=NA) +
   scale_fill_manual(values = yellows,
-                    labels=as.character(quantile(denver_dat$streamdist_min,
+                    labels= as.character(round(quantile(denver_dat$streamdist_min,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Distance\n(Quantile Breaks\n in Feet)") +
+                                                 na.rm=T))),
+                    name = "Distance\n(Quantile Breaks\n in Meters)") +
   labs(title="Distance from Rivers in Denver",
        subtitle="Based on Denver Hydrology Data",
         caption = "Source: Denver Open Data Catalog") +
@@ -446,9 +457,9 @@ ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(flowac_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = blues,
-                    labels=as.character(quantile(denver_dat$flowac_mean,
+                    labels= as.character(round(quantile(denver_dat$flowac_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+                                                 na.rm=T))),
                     name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
   labs(title="Precipitation Flow Accumulation in Denver",
        subtitle="Based on Denver Elevation Data",
@@ -464,9 +475,9 @@ ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(pervious_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = greens,
-                    labels=as.character(quantile(denver_dat$pervious_mean,
+                    labels= as.character(round(quantile(denver_dat$pervious_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+                                                 na.rm=T), 2)),
                     name = "Permeable\nSurface\n(Quantile\nBreaks)") +
   labs(title="Permeable Surface in Denver",
        subtitle="Based on Denver Land Cover Data",
@@ -477,8 +488,13 @@ ggplot() +
 ```{r denver elevation map}
 
 ggplot() +
-  geom_sf(data=denver_dat, aes(fill=elevation_median), 
+  geom_sf(data=denver_dat, aes(fill=factor(ntile(elevation_median,4))), 
             colour=NA) +
+  scale_fill_manual(values = neutrals,
+                    labels= as.character(round(quantile(denver_dat$flowac_mean,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T))),
+                    name = "Mean Elevation\n(Quantile Breaks\nCategorical)") +
   labs(title="Elevation in Denver",
         caption = "Source: webgis.com") +
   mapTheme
