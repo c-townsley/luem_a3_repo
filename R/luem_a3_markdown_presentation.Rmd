@@ -14,9 +14,6 @@ output:
     theme: flatly
     highlight: tango
 ---
-    
-
----
 
 
 
@@ -54,8 +51,6 @@ This project follows the workflow below, which the following sections describe i
 
 6. Conclude with Closing Thoughts
 
-
-## 1 Setup
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
@@ -598,7 +593,7 @@ We eliminate Land Porosity, which did not exhibit statistical significance in ou
 * The AIC is very marginally lower than our first model, at **1259.2**.
 
 
-```{r secondModel, warning=FALSE, results="hide"}
+```{r secondModel, warning=FALSE}
 
 inundTrain_2 <- calg_dat[ trainIndex,] %>% 
   dplyr::select(-flowac_mean, -streamdist_min, -pervious_mean)
@@ -642,7 +637,7 @@ inundModel2_coefficients %>%
 Does it mess with our coefficient interpretation?
 
 
-```{r thirdModel, warning=FALSE, results="hide"}
+```{r thirdModel, warning=FALSE}
 
 inundTrain_3 <- calg_dat[ trainIndex,] %>% 
   dplyr::select(-flowac_mean_log, -streamdist_min_log)
@@ -731,7 +726,7 @@ If we assume a probability cutoff threshold of 50%, our confusion matrix gives u
 
 Overall, the model's true positive rate, i.e., its _sensitivity_, is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, is about 15 times greater than its false negative rate, indicating the model's _specificity_.
 
-```{r confusion_matrix, warning=FALSE}
+```{r confusion_matrix, warning=FALSE, results = "hide"}
 
 testProbs$predClass  = ifelse(testProbs$pred > .5 ,1,0)
 
@@ -743,7 +738,7 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 We experimented with the threshold cutoff to check how the model would respond, and found minor differences in using a 75% and 25% cutoff.
 
 
-```{r confusion_matrix_75_25, message = FALSE, warning = FALSE}
+```{r confusion_matrix_75_25, message = FALSE, warning = FALSE, results = "hide"}
 
 testProbs$predClass75  = ifelse(testProbs$pred > .75 ,1,0)
 
@@ -791,7 +786,7 @@ auc(testProbs$obs, testProbs$pred)
 On average, the prediction accuracy across all 100 randomly generated test sets is **92%**.
 
 
-```{r k_fold, warning = FALSE, message = FALSE}
+```{r k_fold, warning = FALSE, message = FALSE, results = "hide"}
 
 ctrl <- trainControl(method = "cv", 
                      number = 100, 
@@ -827,6 +822,8 @@ ggplot(as.data.frame(inundFit$resample), aes(Accuracy)) +
 
 ## 5.1 Predictions for Calgary
 
+Looks like our predicted and observed values in Calgary are very close!
+
 ```{r predict_whole, warning = FALSE, message= FALSE}
 
 calg_dat_log <- calg_dat %>% 
@@ -856,8 +853,6 @@ calg_pred <-
        subtitle = "Based on a Logistic Regression Model")
 ```
 
-Let’s map it again with the already calculated inundation types overlaid.
-
 ```{r predicted_map2, warning = FALSE, message = FALSE}
  ggplot() + 
   geom_sf(data=calg_pred, aes(fill=factor(ntile(allPredictions,4))), colour=NA) +
@@ -877,10 +872,9 @@ Let’s map it again with the already calculated inundation types overlaid.
        subtitle="Yellow marks areas with observed 'inundation', \nall other taken as 'not inundated' for the purpose of binary regression modeling")
 ```
 
-Looks like our predicted and observed values are very close!
 
-How are the Sensitivity and Specificity values laid out on the map of Calgary? 
 
+**Errors on Map**
 
 ```{r error_map, warning = FALSE, message= FALSE}
 calg_pred %>%
@@ -897,12 +891,19 @@ calg_pred %>%
 
 ```
 
-In spite of the confusion matrix indicating low levels of false negatives proportionate to the data we processed for Calgary, the map helps spatially visualize how the model's errors are spread out, and what might be contributing to them:
-
-* In pre-processing our data, we reclassified the Land Cover rasters for both cities to a 0/1 binary to indicate Land Porosity, where we kept urbanized and rocky land as "non-pervious", whereas all natural vegetation and marshes were "pervious". This assumption could have reduced the model's accuracy by reducing continuous run-off potential numbers to binary, thus reducing nuances in the relationship between Land Porosity and Inundation that the model could capture. 
-
 
 ## 5.2 Predictions for Denver
+
+
+**Prediction Defense**
+
+
+* Our model has a high level of accuracy and generalizability.
+
+* The predicted and observed values for Calgary line up well on the map.
+
+* It accurately placed predicted inundation in Denver along the location of Denver's existing streams.
+
 
 ```{r predict_whole_denver, warning = FALSE, message= FALSE}
 
@@ -939,8 +940,6 @@ denver_pred <-
   
 ```
 
-Does this line up with Denver's hydrological features?
-
 ``` {r pred map 2 denver, warning = FALSE, message = FALSE}
 
 denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
@@ -962,8 +961,6 @@ denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
 
 ```
 
-Yes, it actually lines up very well!
-
 Phew, can't believe that worked...
 
 
@@ -971,39 +968,29 @@ Phew, can't believe that worked...
 # 6. Conclusion
 
 
-**Prediction Defense**
-
-Our model might not be the Oracle of Delphi, but given the large number of underlying assumptions, it works well on a number of fronts:
-
-* It has a high level of accuracy and generalizability, as shown by its accuracy of 92%, even on average across a 100-fold cross-validation test, and the high number of true negatives and positives compared to false negatives and false positives.
-
-* The predicted and observed values for Calgary line up well on the map, with variations observed in how each variable has been visualized - the former on an increasing categorical scale, and the later as a 0/1 binary.
-
-* It accurately placed predicted inundation in Denver along the location of Denver's existing streams, thus confirming its high level of accuracy and generalizability. 
-
-This type of machine learning process differs from a site suitability study in that it builds an algorithm based on probability and predictions, rather than a visual assessment of existing site conditions. This can be helpful in situations like flood inundation mapping, when present-day data is required to communicate a range of odds for an event that might occur in the future. In addition to incorporating more data than a site suitability study, it can be a useful tool for policy-makers to drive disaster-response or land preservation programs. 
-
-It is also quicker than a more detailed, hydraulic model, to generate spatial scenarios of relative risk, that, for a city planning department can help prioritize how more detailed analytical resources are deployed.
-
-
 **Next Steps**
 
-If we were to run through this project again (we won't, but _if_ we were), we might do a few things differently:
-
-* Find a way to integrate land porosity through its run-off potential values, rather than use a simplified binary classification based on urbanized/non-urbanized land.
-
-* Incorporate some more variables from the stream network analysis, such as flow direction, that might help build the robustness of our model. 
-
-* Run through the similarities and differences between the datastes for our two cities from the get go. We struggled for a while with a strange prediction of the Calgary dataset on Denver, and eventually learnt that:
-** By not ensuring both datasets had variables in the same unit (either feet or metres), we were confusing the model
-** By entering Elevation data as absolute numbers instead of in discrete bins, we were training the model on Calgary's relatively high range of elevations (900-1500 metres), which then read Denver's elevations (all below 900 metres), as completely inundated. 
+Send to Denver municipal government with policy remommendations?
 
 
-For now, we're going to get some sleep.
+If we were to run through this project again we might:
+
+* Find a way to integrate land porosity through run-off potential values.
+
+* Incorporate some more variables from the stream network analysis, such as flow direction.
+ 
+
+
+
+Thank you for watching :-)
+
+
 
 
 xx
+
 Charlie + Riddhi
+
 
 
 
