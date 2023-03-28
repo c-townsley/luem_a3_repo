@@ -20,13 +20,11 @@ output:
 
 # 1. Introduction
 
-The purpose of this project is to use existing flooding and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated and the flooding caused over $5 billion in property damage.^1^
+The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta, Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated, and the flooding caused over $5 billion in property damage.^1^
 
 Predictive flood modeling has important implications for the field of environmental planning. Floods cause most natural-disaster losses in the United States and are responsible for an annual average of nearly $8 billion in damage.^2^ Furthermore, as more people develop property in flood-prone areas, inundation induced losses will continue to increase. In the hands of government and community organizations, the results from predictive models are vital for helping cities plan, prepare, and respond to flooding.
 
-How this differs from other approaches... **Riddhi please write**
-
-This project suggests it is important for cities that face the potential of flooding but have limited inundation history to study comparable cities to better understand their own flood exposure.
+With flood events increasing across the world, this project stresses the importance of predictive, comparision-based modeling for cities that face the potential of flooding, but have limited inundation history or access to real-time flood monitoring. Such an approach can help cities "on the edge" make comparisons to better understand their own flood exposure and consequently plan urban development, zoning and preservation policy, and disaster-mitigation with a better sense of preparedness. 
 
 
 ## Why Denver?
@@ -237,9 +235,9 @@ calg_pervious <- read.csv("Calgary/Processed/zonalstats_tables/calg_pervious_mea
   dplyr::select(uniqueID, MEAN) %>% 
   rename(pervious_mean = MEAN)
 
-calg_elevation <- read.csv("Calgary/Processed/zonalstats_tables/calg_elevation_med.csv") %>% 
-    dplyr::select(uniqueID, MEDIAN) %>% 
-  rename(elevation_median = MEDIAN)
+calg_elevation <- read.csv("Calgary/Processed/zonalstats_tables/calg_elevation_mean.csv") %>% 
+    dplyr::select(uniqueID, MEAN) %>% 
+  rename(elevation_mean = MEAN)
 
 calg_flowac <- read.csv("Calgary/Processed/zonalstats_tables/calg_flowac_mean.csv") %>% 
     dplyr::select(uniqueID, MEAN) %>% 
@@ -271,9 +269,9 @@ denv_pervious <- read.csv ("Denver/Processed/zonalstats_tables/denv_pervious_mea
   dplyr::select(uniqueID, MEAN) %>% 
   rename(pervious_mean = MEAN)
 
-denv_elevation <- read.csv("Denver/Processed/zonalstats_tables/denv_elevation_med.csv") %>% 
-  dplyr::select(uniqueID, MEDIAN) %>% 
-  rename(elevation_median = MEDIAN)
+denv_elevation <- read.csv("Denver/Processed/zonalstats_tables/denver_elevation_mean.csv") %>% 
+  dplyr::select(uniqueID, MEAN) %>% 
+  rename(elevation_mean = MEAN)
 
 
 denv_flowac <- read.csv("Denver/Processed/zonalstats_tables/denv_flowac_mean.csv") %>% 
@@ -396,10 +394,10 @@ We reclassified land cover raster data in Arc into two categories pervious surfa
 ```{r calgary elevation map}
 
 ggplot() +
-  geom_sf(data=calg_dat, aes(fill=factor(ntile(elevation_median,4))), 
+  geom_sf(data=calg_dat, aes(fill=factor(ntile(elevation_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = neutrals,
-                    labels=as.character(quantile(calg_dat$elevation_median,
+                    labels=as.character(quantile(calg_dat$elevation_mean,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
                     name = "Mean Elevation\n(Quantile Breaks\nin Meters)") +
@@ -431,7 +429,7 @@ ggplot() +
                     labels=as.character(quantile(denver_dat$streamdist_min,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                    name = "Distance\n(Quantile Breaks\n in Feet)") +
+                    name = "Distance\n(Quantile Breaks\n in Metres)") +
   labs(title="Distance from Rivers in Denver",
        subtitle="Based on Denver Hydrology Data",
         caption = "Source: Denver Open Data Catalog") +
@@ -477,8 +475,13 @@ ggplot() +
 ```{r denver elevation map}
 
 ggplot() +
-  geom_sf(data=denver_dat, aes(fill=elevation_median), 
+  geom_sf(data=denver_dat, aes(fill=factor(ntile(elevation_mean,4))), 
             colour=NA) +
+scale_fill_manual(values = blues,
+                    labels=as.character(quantile(denver_dat$elevation_mean,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                    name = "Elevation in Metres\n(Quantile\nBreaks)") +
   labs(title="Elevation in Denver",
         caption = "Source: webgis.com") +
   mapTheme
@@ -496,7 +499,7 @@ Note: we had to log adjust our Flow Accumulation and Distance to Stream variable
 ```{r wide_2_long}
 calg_PlotVariables <- calg_dat %>% 
   as.data.frame() %>%
-    dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log) %>% 
+    dplyr::select(inund_sum, pervious_mean, elevation_mean, flowac_mean_log, streamdist_min_log) %>% 
     pivot_longer(cols = -inund_sum)
 
 ```
@@ -558,7 +561,7 @@ Our first binomial regression model inputs the Calgary training set with the dep
 
 set.seed(3456)
 
-trainIndex <- createDataPartition(calg_dat$elevation_median, p = .70,
+trainIndex <- createDataPartition(calg_dat$elevation_mean, p = .70,
                                   list = FALSE,
                                   times = 1) 
 
@@ -578,10 +581,10 @@ A quick correlation test reveals that there isn't too high a level of multi-coll
 
 corr <- calg_dat %>%
   as.data.frame() %>%
-  dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log) %>% 
+  dplyr::select(inund_sum, pervious_mean, elevation_mean, flowac_mean_log, streamdist_min_log) %>% 
   rename("Distance to Stream (log)" = streamdist_min_log,
          "Flow Accumulation (log)" = flowac_mean_log,
-         "Elevation" = elevation_median,
+         "Elevation" = elevation_mean,
          "Land Porosity" = pervious_mean,
          "Inundation (observed)" = inund_sum)
 
@@ -597,7 +600,7 @@ A logistic regression on the first model displays the following results:
 
 * The p-values indicate a high level of statistical significance for three out of four of our independent variables -- elevation, flow accumulation, and stream distance.
 
-* The Aikake Information Criterion (AIC) is a useful number when comparing models on the basis of their performance. When selecting multiple regression models, a lower AIC indicates a better model performance.^3^ In this case, the AIC is **1253.8**.
+* The Aikake Information Criterion (AIC) is a useful number when comparing models on the basis of their performance. When selecting multiple regression models, a lower AIC indicates a better model performance.^3^ In this case, the AIC is **1259.8**.
 
 * In our next step, we exponentiate the coefficients to interpret their relationship to the likelihood of flood inundation.
 
@@ -612,10 +615,10 @@ summary(inundModel)
 
 The exponentiated coefficients of the first model exhibit the following relationships between the dependent and independent variables:
 
-* All else equal, a unit change in Land Porosity _reduces_ the chances of inundation by 16.35% (this is awkward because Land Porosity is also a binary variable)
-* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 2.7%
+* All else equal, a unit increase in Land Porosity _reduces_ the chances of inundation by 30.56% (this is awkward because Land Porosity is also a binary variable)
+* All else equal, a unit increase in Elevation _reduces_ the chances of flood inundation by 47%
 * All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 13.9%
-* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 38.7%
+* All else equal, a unit increase in Distance to Stream _reduces_ the odds of flood inundation by 41.1%
 
 
 ``` {r firstModel coefficients}
@@ -626,7 +629,7 @@ The exponentiated coefficients of the first model exhibit the following relation
 inundModel$coefficients
 
 inundModel_vars <- c("Land Porosity", "Elevation", "Flow Accumulation (log)", "Distance to Stream (log)")
-inundModel_coeffs <- c(((exp(-0.17860495) - 1) * 100), ((exp(-0.02753326) - 1) * 100), ((exp(0.13087261) - 1) * 100), ((exp(-0.49010423 ) - 1) * 100))
+inundModel_coeffs <- c(((exp(-0.3648453 ) - 1) * 100), ((exp(-0.6357177) - 1) * 100), ((exp(0.1009900) - 1) * 100), ((exp( -0.5288784) - 1) * 100))
 
 inundModel_coefficients <- data.frame(inundModel_vars, inundModel_coeffs)
 
@@ -649,7 +652,7 @@ We eliminate Land Porosity, which did not exhibit statistical significance in ou
 
 * The resulting model shows that all independent variables are statistically significant.
 
-* The AIC is marginally lower than our first model, at **1252.2**.
+* The AIC is very marginally lower than our first model, at **1259.2**.
 
 
 ```{r secondModel}
@@ -672,9 +675,9 @@ summary(inundModel_2)
 
 The exponentiated coefficients of the second model are not very different from the first model:
 
-* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 2.6%
-* All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 13.9%
-* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 38.4%
+* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 46.4%
+* All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 10.6%
+* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 40.5%
 
 
 ``` {r secondModel coefficients}
@@ -685,7 +688,7 @@ The exponentiated coefficients of the second model are not very different from t
 inundModel_2$coefficients
 
 inundModel2_vars <- c("Elevation", "Flow Accumulation (log)", "Distance to Stream (log)")
-inundModel2_coeffs <- c(((exp(-0.02727086) - 1) * 100), ((exp(0.13073865) - 1) * 100), ((exp(-0.48586608) - 1) * 100))
+inundModel2_coeffs <- c(((exp(-0.6243868) - 1) * 100), ((exp(0.1009589) - 1) * 100), ((exp(-0.5192783) - 1) * 100))
 
 inundModel2_coefficients <- data.frame(inundModel2_vars, inundModel2_coeffs)
 
@@ -726,15 +729,15 @@ summary(inundModel_3)
 
 ```
 
-The exponentiated coefficients of the third model are different from the previous two models, in that the odds of inundation associated with non-log-adjusted Flow Accumulation and Distance to Streams is a _lot_ smaller:
+The exponentiated coefficients of the third model are very different from the previous two models, in that the odds of inundation associated with Land Porosity, non-log-adjusted Flow Accumulation and Distance to Streams is a _lot_ smaller:
 
-* All else equal, a unit change in Land Porosity _increases_ the chances of flood inundation by 22%
-* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 2.1%
+* All else equal, a unit change in Land Porosity _increases_ the chances of flood inundation by 4.9%
+* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 38.1%
 * All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 0.01%
-* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 0.42%
+* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 0.46%
 
 
-This seems funky, given that a variation in distance from a stream should logically affect the odds of inundation a lot more than 0.42%.
+This seems funky, given that a variation in distance from a stream should logically affect the odds of inundation a lot more than 0.46%.
 Also, since this project is less about statistical significance and more about exploring variables, perhaps including Land Porosity would be fun.
 
 We're glad (lol) we ran these options, but we're going to stick with our original model for the rest of the project ¯\_(ツ)_/¯
@@ -747,7 +750,7 @@ We're glad (lol) we ran these options, but we're going to stick with our origina
 inundModel_3$coefficients
 
 inundModel3_vars <- c("Land Porosity", "Elevation", "Flow Accumulation", "Distance to Stream")
-inundModel3_coeffs <- c(((exp(0.1989610743) - 1) * 100), ((exp(-0.0215381673) - 1) * 100), ((exp(0.0001608351) - 1) * 100), ((exp(-0.0042834696) - 1) * 100))
+inundModel3_coeffs <- c(((exp(0.0479009901) - 1) * 100), ((exp(-0.4802761173) - 1) * 100), ((exp(0.0001509916) - 1) * 100), ((exp(-0.0046012831) - 1) * 100))
 
 inundModel3_coefficients <- data.frame(inundModel3_vars, inundModel3_coeffs)
 
@@ -806,7 +809,7 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
 ## 4.1 Confusion Metrics
 
 To test the model's prediction accuracy, we created a confusion matrix from which levels of error can be extrapolated.
-If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.917**, with the following sensitivity and specificity results:
+If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.909**, with the following sensitivity and specificity results:
 
 
 **Sensitivity & Specificity Analysis**
@@ -815,19 +818,19 @@ _Predicted vs. Reference Values, 50% Cutoff_
 -------------------
 |   | 0    | 1    |
 -------------------
-| 0 | 1397 | 92   |
-| 1 | 42   | 80   |
+| 0 | 1389 | 91   |
+| 1 | 55   | 75   |
 -------------------
 
 
-* It has predicted 0 as 0, i.e. a _True Negative_, 1397 times
-* It has predicted 0 as 1, i.e. a _False Negative_, 92 times
-* It has predicted 1 as 0, i.e. a _False Positive_, 42 times
-* It has predicted 1 as 1, i.e. a _True Positive_, 80 times
+* It has predicted 0 as 0, i.e. a _True Negative_, 1389 times
+* It has predicted 0 as 1, i.e. a _False Negative_, 91 times
+* It has predicted 1 as 0, i.e. a _False Positive_, 55 times
+* It has predicted 1 as 1, i.e. a _True Positive_, 75 times
 
-Overall, the model's true positive rate, i.e., the proportion of 1s predicted as 1s indicates its _sensitivity_, which in this case is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, i.e., the proportion of 0s accurately predicted as 0s is about 18 times greater than the number of 0s falsely predicted as 1s, indicating the model's _specificity_.
+Overall, the model's true positive rate, i.e., the proportion of 1s predicted as 1s indicates its _sensitivity_, which in this case is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, i.e., the proportion of 0s accurately predicted as 0s is about 15 times greater than the number of 0s falsely predicted as 1s, indicating the model's _specificity_.
 
-It has an error rate of about 8% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 134 erroneous predictions (92+42) are only a small fraction of its 1477 accurate predictions (1397+80).
+It has an error rate of about 10% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 146 erroneous predictions are only a small fraction of its 1464 accurate predictions.
 
 ```{r confusion_matrix}
 
@@ -840,7 +843,7 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 
 We experimented with the threshold cutoff to check how the model would respond, and found that:
 
-The accuracy of a model with with a 75% threshold cutoff remains almost the same as the original model with a 50% cutoff, at **0.913**
+The accuracy of a model with with a 75% threshold cutoff is a little higher than the original model with a 50% cutoff, at **0.917**
 However, it contains slightly different levels of False Positive and False Negative predictions:
 
 
@@ -850,12 +853,12 @@ _Predicted vs. Reference Values, 75% Cutoff_
 -------------------
 |   | 0    | 1    |
 -------------------
-| 0 | 1435 | 136  |
-| 1 | 4    | 36   |
+| 0 | 1440 | 129  |
+| 1 | 4    | 37   |
 -------------------
 
 
-Similarly, the accuracy of a model with a 25% cutoff is only marginally higher than the original model at **0.919**, but it also exhibits a lower specificity:
+Similarly, the accuracy of a model with a 25% cutoff is only marginally higher than the original model at **0.903**, but it also exhibits a lower specificity:
 
 
 **Sensitivity & Specificity Analysis**
@@ -864,8 +867,8 @@ _Predicted vs. Reference Values, 25% Cutoff_
 -------------------
 |   | 0    | 1    |
 -------------------
-| 0 | 1356 | 48   |
-| 1 | 83   | 124  |
+| 0 | 1342 | 53   |
+| 1 | 102  | 113  |
 -------------------
 
 
@@ -893,7 +896,7 @@ The Receiver Operating Characteristic (ROC) curve for our original model with a 
 
 It shows the trade-off between Sensitivity and Specificity in our test set against a random classifier where True Positive = False Positive (the light grey diagonal). In this case, the variation of the ROC curve away from the random classifier line, toward the top-right corner indicates a high rate of model accuracy.
 
-This is further confirmed by calculating the area under the curve as **0.947**, which confirms that the model is able to predict flood inundation with a 94.7% accuracy. 
+This is further confirmed by calculating the area under the curve as **0.939**, which confirms that the model is able to predict flood inundation with a 94% accuracy. 
 
 
 ```{r roc_curve, message = FALSE, warning = FALSE}
@@ -928,7 +931,7 @@ ctrl <- trainControl(method = "cv",
 inundFit <- train(as.factor(inund_sum) ~ .,
                data = calg_dat %>% 
                  as.data.frame() %>%
-                 dplyr::select(inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log), 
+                 dplyr::select(inund_sum, pervious_mean, elevation_mean, flowac_mean_log, streamdist_min_log), 
                method="glm", family="binomial",
                trControl = ctrl)
 
@@ -963,13 +966,11 @@ We ran a lot of tests on our model, and are probably ready to use it for a few p
 ```{r predict_whole, warning = FALSE, message= FALSE}
 
 calg_dat_log <- calg_dat %>% 
-  dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry)
+  dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_mean, flowac_mean_log, streamdist_min_log, geometry)
 
-calg_dat2 <- calg_dat %>% 
-  dplyr::select(uniqueID, inund_sum, pervious_mean, elevation_median, flowac_mean, streamdist_min, geometry)
 
 allPredictions <- 
-  predict(inundFit, calg_dat2, type="prob")[,2]
+  predict(inundFit, calg_dat, type="prob")[,2]
   
 calg_pred <- 
   cbind(calg_dat_log,allPredictions) %>%
@@ -1033,8 +1034,6 @@ calg_pred %>%
 
 In spite of the confusion matrix indicating low levels of false negatives proportionate to the data we processed for Calgary, the map helps spatially visualize how the model's errors are spread out, and what might be contributing to them:
 
-* Flow Accumulation ...?
-
 * In pre-processing our data, we reclassified the Land Cover rasters for both cities to a 0/1 binary to indicate Land Porosity, where we kept urbanized and rocky land as "non-pervious", whereas all natural vegetation and marshes were "pervious". This assumption could have reduced the model's accuracy by reducing continuous run-off potential numbers to binary, thus reducing nuances in the relationship between Land Porosity and Inundation that the model could capture. 
 
 
@@ -1043,7 +1042,7 @@ In spite of the confusion matrix indicating low levels of false negatives propor
 ```{r predict_whole_denver, warning = FALSE, message= FALSE}
 
 denver_dat_log <- denver_dat %>% 
-  dplyr::select(uniqueID, pervious_mean, elevation_median, flowac_mean_log, streamdist_min_log, geometry)
+  dplyr::select(uniqueID, pervious_mean, elevation_mean, flowac_mean_log, streamdist_min_log, geometry)
 
 allPredictions_denver <- 
   predict(inundFit, denver_dat_log, type="prob")[,2]
@@ -1059,11 +1058,13 @@ denver_pred <-
 
 
  ggplot() + 
-    geom_sf(data=denver_pred, aes(fill=factor(allPredictions_denver)), 
+     geom_sf(data=denver_pred, aes(fill=factor(ntile(allPredictions_denver,4))), 
             colour=NA) +
-    scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
-                      labels=c("0", "1"),
-                      name="Predicted\nProbabilities\n(Binary)") +
+    scale_fill_manual(values = blues,
+                      labels=as.character(quantile(denver_pred$allPredictions_denver,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                      name="Predicted\nProbabilities(%)\n(Quantile\nBreaks)") +
   mapTheme +
   labs(title="Predicted Probability of Flood Inundation in Denver",
         subtitle="Based on a Logistic Regression Model trained on data from Calgary\n",
@@ -1077,12 +1078,14 @@ Does this line up with Denver's hydrological features?
 
 denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
 
- ggplot() + 
-       geom_sf(data=denver_pred, aes(fill=factor(allPredictions)), 
+  ggplot() + 
+     geom_sf(data=denver_pred, aes(fill=factor(ntile(allPredictions_denver,4))), 
             colour=NA) +
-    scale_fill_manual(values = c("#CEEBF0", "#51A6AE"),
-                      labels=c("0", "1"),
-                      name="Predicted\nProbabilities\n(Binary)") +
+    scale_fill_manual(values = blues,
+                      labels=as.character(quantile(denver_pred$allPredictions_denver,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T)),
+                      name="Predicted\nProbabilities(%)\n(Quantile\nBreaks)") +
    geom_sf(data=denver_hydro, color="#EDB025", size=35, linejoin="round", lineend="round") +
   labs(title="Predicted Probability of Flood Inundation in Denver",
         subtitle="Based on a Logistic Regression Model trained on data from Calgary\nYellow Lines Mark Location of Existing Rivers & Streams",
@@ -1094,6 +1097,7 @@ denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
 Yes, it actually lines up very well!
 
 Phew, can't believe that worked...
+
 
 
 # 6. Conclusion
@@ -1114,13 +1118,17 @@ If we were to run through this project again (we won't, but _if_ we were), we mi
 
 * Incorporate some more variables from the stream network analysis, such as flow direction, that might help build the robustness of our model. 
 
-* ....
+* Run through the similarities and differences between the datastes for our two cities from the get go. We struggled for a while with a strange prediction of the Calgary dataset on Denver, and eventually learnt that:
+** By not ensuring both datasets had variables in the same unit (either feet or metres), we were confusing the model
+** By entering Elevation data as absolute numbers instead of in discrete bins, we were training the model on Calgary's relatively high range of elevations (900-1500 metres), which then read Denver's elevations (all below 900 metres), as completely inundated. 
+
 
 For now, we're going to get some sleep.
 
 
 xx
 Charlie + Riddhi
+
 
 
 ## 6.1 Endnotes
@@ -1130,44 +1138,4 @@ Charlie + Riddhi
 2. “Flood Inundation Mapping (FIM) Program.” n.d. U.S. Geological Survey. Accessed February 27, 2023. https://www.usgs.gov/mission-areas/water-resources/science/flood-inundation-mapping-fim-program.
 
 3. Hastie, T., Tibshirani, R., Friedman, J. 2009. The Elements of Statistical Learning: Data Mining, Interference, and Prediction. Second Ed. Available at: https://link.springer.com/book/10.1007/978-0-387-84858-7
-
-
-
-``` {r code test}
-
-ggplot() + 
-    geom_sf(data=denver_pred, aes(fill=factor(ntile(allPredictions,4))), 
-            colour=NA) +
-    scale_fill_manual(values = blues,
-                      labels=as.character(quantile(denver_pred$allPredictions,
-                                                 c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                      name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
-   geom_sf(data=denver_hydro, color="#EDB025", size=20) +
-  labs(title="Predicted Probability of Flood Inundation in Denver",
-        subtitle="Based on a Logistic Regression Model trained on data from Calgary\nYellow Lines Mark Location of Existing Rivers & Streams",
-        caption = "Source: blah blah blah") +
-   mapTheme
-
-
-ggplot() + 
-    geom_sf(data=denver_pred, aes(fill=allPredictions), 
-            colour=NA) +
-    scale_fill_viridis(
-                      alpha = 1,
-                      begin = 1,
-                      end = 0.6,
-                      direction = 1,
-                      discrete = FALSE,
-                      option = "A") +
-   geom_sf(data=denver_hydro, color="#EDB025", size=20) +
-  labs(title="Predicted Probability of Flood Inundation in Denver",
-        subtitle="Based on a Logistic Regression Model trained on data from Calgary\nYellow Lines Mark Location of Existing Rivers & Streams",
-        caption = "Source: blah blah blah") +
-   mapTheme
-
-
-
-
-```
 
