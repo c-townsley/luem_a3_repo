@@ -3,7 +3,7 @@ title: "Estimating a Flood Inundation Probability Map"
 subtitle: "CPLN 675 Assignment3"
 author: "Riddhi Batra & Charlie Townsley"
 date: "`r Sys.Date()`"
-output: 
+output:   
   html_document:
     toc: true
     toc_depth: 3
@@ -14,38 +14,16 @@ output:
     theme: flatly
     highlight: tango
 ---
+    
+
+---
 
 
 
 # 1. Introduction
 
-_The link to our video can be found at: ..._
 
-The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta, Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated, and the flooding caused over $5 billion in property damage.^1^
-
-Predictive flood modeling has important implications for the field of environmental planning. Floods cause most natural-disaster losses in the United States and are responsible for an annual average of nearly $8 billion in damage.^2^ Furthermore, as more people develop property in flood-prone areas, inundation induced losses will continue to increase. In the hands of government and community organizations, the results from predictive models are vital for helping cities plan, prepare, and respond to flooding.
-
-With flood events increasing across the world, this project stresses the importance of predictive, comparision-based modeling for cities that face the potential of flooding, but have limited inundation history or access to real-time flood monitoring. Such an approach can help cities "on the edge" make comparisons to better understand their own flood exposure and consequently plan urban development, zoning and preservation policy, and disaster-mitigation with a better sense of preparedness. 
-
-
-## Why Denver?
-
-We chose Denver, Colorado as our comparison city for estimating flooding because of key similarities. We observed that:
-
-* Both cities straddle rivers and are adjacent to the Rocky Mountains
-
-* Both Calgary and Denver cover a large land area (319 mi^2^ vs. 155 mi^2^)
-
-* They have similar levels of annual precipitation (16.7 in for Calgary and 8-15 in for Denver)
-
-* They are both at high elevations (3,400 ft for Calgary, 5,400 ft for Denver)
-
-* They both have flooded in the past
-
-
-## Hypothesis
-
-We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images](https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow and accumulation based on elevation and slope.
+The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. 
 
 
 ## Project Structure
@@ -79,8 +57,6 @@ This project follows the workflow below, which the following sections describe i
 
 ## 1 Setup
 
-Load libraries, set working directories, write map and plot themes, and call-in files. 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
@@ -108,6 +84,7 @@ library(kableExtra)
 library(tigris)
 library(viridis)
 library(RColorBrewer)
+library(tinytex)
 ```
 
 ```{r themes, results = "hide"}
@@ -171,9 +148,6 @@ calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND
 
 ## 2.1 Create Fishnets
 
-
-Create a fishnet for Calgary to do processing in ArcGIS.
-
 ```{r create_fishnets_calgary, results = "hide"}
 
 calgary_fishnet <- st_make_grid(calgary_boundary,
@@ -219,7 +193,7 @@ ggplot()+
 
 ## 2.2 Feature Engineering: Arc to R
 
-After creating fishnets for Calgary and Denver in R, we exported them as shapefiles for processing in ArcGIS. We created tables of zonal statistics from relevant raster data, by fishnet cell, in ArcGIS. Then, we brought these tables back into R and joined each table with their respective city's fishnet.
+After creating fishnets for Calgary and Denver in R, we exported them as shapefiles for processing in ArcGIS. where we created tables of zonal statistics from relevant raster data.
 
 ```{r join engineered features to calg fishnet, results = "hide"}
 
@@ -328,10 +302,6 @@ ggplot() +
   mapTheme
 ```
 
-The Calgary flood inundation raster data we worked with contained four values: inundated, not inundated, rivers/water bodies, and clouds. We reclassified this layer so that everything inundated = 1, and everything else = 0. We then used Zonal Statistics as Table in Arc to calculate the sum of inundated raster cells for each fishnet cell. Finally, we changed these sum values into a binary in R. Every fishnet cell that had more than 16 inundated raster cells became equal to 1, and every other cell became equal to zero.
-
-**Note: the Calgary inundation raster layer did not cover the entire city boundary. Therefore, the fishnet cells outside of the raster layer were removed from further processing.
-
 ```{r calgary stream dist map}
               
 ggplot() +
@@ -348,9 +318,6 @@ ggplot() +
   mapTheme                    
                     
 ```
-
-We used the distance accumulation tool to create a raster layered where each pixel was equal to its distance from a river. We then set each fishnet cell in the resulting table equal to the minimum distance to a river in that cell. We thought it best to over-sample cells near rivers rather than under-sample, because our model is based on riverine flooding.
-
 
 ```{r calgary fac map}
 
@@ -369,9 +336,6 @@ ggplot() +
 
 ```
 
-We used the DEM elevation layer to calculate flow accumulation in ArcGIS. Flow accumulation approximates where water that falls within city boundaries during a rain event would flow to by assigning each raster cell a value equal to the amount of cells that "flow" into it (based on elevation and flow direction). We then set each fishnet cell equal to the mean flow accumulation value it contained.
-
-
 ```{r calgary pervious surface map}
 
 ggplot() +
@@ -389,9 +353,6 @@ ggplot() +
 
 ```
 
-We reclassified land cover raster data in Arc into two categories pervious surface = 1, and impervious surface = 0. We then set each fishnet cell in the resulting table equal to the mean of the pervious raster cells it contained. This was to account for a high amount of local variation in permeability.
-
-
 ```{r calgary elevation map}
 
 ggplot() +
@@ -408,9 +369,6 @@ ggplot() +
 
 
 ```
-
-For elevation, we simply used the DEM for Calgary and set each fishnet cell equal to the median elevation in that cell.
-
 
 ### Denver
 
@@ -493,9 +451,7 @@ ggplot() +
 ## 2.4 What is our Data Telling Us?
 
 
-How do our variables correlate with inundated/not inundated values?
-
-Note: we had to log adjust our Flow Accumulation and Distance to Stream variables to compensate the wide range of outliers in the data set. 
+We had to log adjust our Flow Accumulation and Distance to Stream variables to compensate the wide range of outliers in the data set. 
 
 ```{r wide_2_long}
 calg_PlotVariables <- calg_dat %>% 
@@ -504,15 +460,8 @@ calg_PlotVariables <- calg_dat %>%
     pivot_longer(cols = -inund_sum)
 ```
 
-## Data Spread
 
-The violin plots below shows how each variable is spread across 0/1 values of inundation. They visually indicate the relationship between the variables we assumed would cause / correlate to flooding, as a function of how we processed them with relation to Calgary's fishnet. For instance:
-
-* Fishnet cells at lower elevations are more inundated than those at higher elevations.
-
-* Fishnet cells at longer distances from a stream are not as inundated as those that are at shorter distances from a stream. 
-
-By confirming the hypotheses we started with, this quick plot gives us confidence in our variable selection before we proceed with building regression models. 
+The violin plots below shows how each variable is spread across 0/1 values of inundation.
 
 
 ``` {r data spread, results = "hide"}
@@ -538,8 +487,6 @@ ggplot(calg_PlotVariables) +
 
 **How many fishnet cells in Calgary are inundated?**
 
-A quick calculation reveals that 509 of 5373, or 9.5% of fishnet cells in Calgary are inundated.
-
 
 ``` {r fishnet cell calcs, results = "hide"}
 
@@ -556,8 +503,7 @@ no_fishnets <-(509/5373)*100
 
 ## 3.1 Test, Train, Correlate, Regress: Model 1
 
-Our first binomial regression model inputs the Calgary training set with the dependent variable set to "Inundation", and four independent variables, namely, Land Porosity (a binary derived from land cover), Elevation, Flow Accumulation, and Distance to a Stream.
-
+Our first binomial regression model inputs the Calgary training set with the dependent variable set to "Inundation", and four independent variables.
 
 ```{r training_set, results = "hide"}
 
@@ -577,11 +523,7 @@ inundTest  <- calg_dat[-trainIndex,]%>%
 ##p=0.70 indicates the 70/30 partition
 ```
 
-
-## Correlation Tests
-
-
-A quick correlation test reveals that there isn't too high a level of multi-collinearity between the variables we have selected for our regression. 
+## Correlation Test
 
 ``` {r correlation matrix, results = "hide"}
 
@@ -604,11 +546,9 @@ ggcorrplot(calg_matrix, method="square", colors = c("#73BBBF", "#FDF4E9", "#92AF
 
 A logistic regression on the first model displays the following results:
 
-* The p-values indicate a high level of statistical significance for three out of four of our independent variables -- elevation, flow accumulation, and stream distance.
+* The p-values indicate a high level of statistical significance.
 
-* The Aikake Information Criterion (AIC) is a useful number when comparing models on the basis of their performance. When selecting multiple regression models, a lower AIC indicates a better model performance.^3^ In this case, the AIC is **1259.8**.
-
-* In our next step, we exponentiate the coefficients to interpret their relationship to the likelihood of flood inundation.
+* The Aikake Information Criterion (AIC) is **1259.8**.
 
 
 ```{r firstModel, warning=FALSE}
@@ -621,7 +561,7 @@ summary(inundModel)
 
 The exponentiated coefficients of the first model exhibit the following relationships between the dependent and independent variables:
 
-* All else equal, a unit increase in Land Porosity _reduces_ the chances of inundation by 30.56% (this is awkward because Land Porosity is also a binary variable)
+* All else equal, a unit increase in Land Porosity _reduces_ the chances of inundation by 30.56%
 * All else equal, a unit increase in Elevation _reduces_ the chances of flood inundation by 47%
 * All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 13.9%
 * All else equal, a unit increase in Distance to Stream _reduces_ the odds of flood inundation by 41.1%
@@ -647,9 +587,6 @@ inundModel_coefficients %>%
 
 
 ## 3.2 Regress: Model 2 & 3
-
-
-Let's test out the results of some other models:
 
 
 **Model 2: Does 'Land Porosity' matter?**
@@ -678,14 +615,6 @@ summary(inundModel_2)
 
 ```
 
-
-The exponentiated coefficients of the second model are not very different from the first model:
-
-* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 46.4%
-* All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 10.6%
-* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 40.5%
-
-
 ``` {r secondModel coefficients, warning=FALSE, results="hide"}
 
 ## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
@@ -705,11 +634,6 @@ inundModel2_coefficients %>%
 ```
 
 **Model 3: What if we don't log-adjust our variables?**
-
-While carrying out a preliminary assessment of variable relationships, we log-adjusted Flow Accumulation and Distance to Stream to compress their range of values.
-
-But what happens if we use the non-adjusted variables in a logit model?
-
 
 * All variables except Land Porosity are statistically significant.
 
@@ -735,18 +659,8 @@ summary(inundModel_3)
 
 ```
 
-The exponentiated coefficients of the third model are very different from the previous two models, in that the odds of inundation associated with Land Porosity, non-log-adjusted Flow Accumulation and Distance to Streams is a _lot_ smaller:
+The exponentiated coefficients non-log-adjusted Flow Accumulation and Distance to Streams is a _lot_ smaller -- funky, given that a variation in distance from a stream should logically affect the odds of inundation a lot more than 0.46%.
 
-* All else equal, a unit change in Land Porosity _increases_ the chances of flood inundation by 4.9%
-* All else equal, a unit change in Elevation _reduces_ the chances of flood inundation by 38.1%
-* All else equal, a unit change in Flow Accumulation _increases_ the odds of flood inundation by 0.01%
-* All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 0.46%
-
-
-This seems funky, given that a variation in distance from a stream should logically affect the odds of inundation a lot more than 0.46%.
-Also, since this project is less about statistical significance and more about exploring variables, perhaps including Land Porosity would be fun.
-
-We're glad (lol) we ran these options, but we're going to stick with our original model for the rest of the project ¯\_(ツ)_/¯
 
 ``` {r thirdModel coefficients, warning=FALSE, results="hide"}
 
@@ -776,11 +690,6 @@ Well, it depends on where you live.
 
 
 The plots below illustrate a distribution of predicted probabilities, based on the training and test sets. 
-
-* The histogram illustrates the predicted probability of fishnet cells in Calgary being inundated, based on the conditions set by our first model. As the frequency distribution shows, the dataset exhibits a lower overall probability of inundation -- there are over 1200 fishnet cells with a 0-0.1 probability of inundation, whereas cells with a higher probability of inundation are much fewer.
-
-* The second plot is a measure of how well our data is predicting probabilities for "inundation" (1s) vs "no inundation" (0s), where the vertical line represents a 0.5 probability of inundation. In this case the values reflecting not inundated areas are clustered closer to zero, indicating a lower probability for inundation overall.
-
 
 ```{r predict_first}
 classProbs <- predict(inundModel, inundTest, type="response")
@@ -817,22 +726,10 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
 ## 4.1 Confusion Metrics
 
 To test the model's prediction accuracy, we created a confusion matrix from which levels of error can be extrapolated.
-If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.909**, with the following sensitivity and specificity results:
+If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.909**.
 
 
-
-**Sensitivity & Specificity Analysis**: Predicted vs. Reference Values, 50% Cutoff
-
-
-* It has predicted 0 as 0, i.e. a _True Negative_, 1389 times
-* It has predicted 0 as 1, i.e. a _False Negative_, 91 times
-* It has predicted 1 as 0, i.e. a _False Positive_, 55 times
-* It has predicted 1 as 1, i.e. a _True Positive_, 75 times
-
-
-Overall, the model's true positive rate, i.e., the proportion of 1s predicted as 1s indicates its _sensitivity_, which in this case is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, i.e., the proportion of 0s accurately predicted as 0s is about 15 times greater than the number of 0s falsely predicted as 1s, indicating the model's _specificity_.
-
-It has an error rate of about 10% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 146 erroneous predictions are only a small fraction of its 1464 accurate predictions.
+Overall, the model's true positive rate, i.e., its _sensitivity_, is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, is about 15 times greater than its false negative rate, indicating the model's _specificity_.
 
 ```{r confusion_matrix, warning=FALSE}
 
@@ -843,11 +740,7 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
                        positive = "1")
 ```
 
-We experimented with the threshold cutoff to check how the model would respond, and found that:
-
-The accuracy of a model with with a **75%** threshold cutoff is a little higher than the original model with a 50% cutoff, at **0.917**. However, it contains slightly different levels of False Positive and False Negative predictions.
-
-Similarly, the accuracy of a model with a **25%** cutoff is only marginally higher than the original model at **0.903**, but it also exhibits a lower specificity.
+We experimented with the threshold cutoff to check how the model would respond, and found minor differences in using a 75% and 25% cutoff.
 
 
 ```{r confusion_matrix_75_25, message = FALSE, warning = FALSE}
@@ -871,11 +764,7 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 
 **Run, These Are No Geese!!**
 
-The Receiver Operating Characteristic (ROC) curve for our original model with a 50% cutoff plots the True Positive Rate (Sensitivity) against the False Positive Rate (1 - Specificity) for the probability of flood inundation in Calgary.
-
-It shows the trade-off between Sensitivity and Specificity in our test set against a random classifier where True Positive = False Positive (the light grey diagonal). In this case, the variation of the ROC curve away from the random classifier line, toward the top-right corner indicates a high rate of model accuracy.
-
-This is further confirmed by calculating the area under the curve as **0.939**, which confirms that the model is able to predict flood inundation with a 94% accuracy. 
+The Receiver Operating Characteristic (ROC) curve, indicates a high rate of model accuracy, calculated at **94%**, 
 
 
 ```{r roc_curve, message = FALSE, warning = FALSE}
@@ -898,9 +787,8 @@ auc(testProbs$obs, testProbs$pred)
 
 **It's Accurate but is it Generalizable?**
 
-The following section checks the accuracy of our predictions across 100 randomly generated test sets, to gauge its applicability in predicting Denver's chances of flood inundation.
 
-On average, the prediction accuracy across all 100 folds is **92%**.
+On average, the prediction accuracy across all 100 randomly generated test sets is **92%**.
 
 
 ```{r k_fold, warning = FALSE, message = FALSE}
@@ -920,11 +808,8 @@ inundFit
 
 #inundFit is our model trained to predict using the binomial logistic regression, or glm, method. 
 ```
-Subsequently plotting a histogram of the accuracy for each fold allows us to trace its generalizability.
-The plot points out that a large number of folds (i.e., values from the "Resample" column) are clustered at high accuracy values. 
-This indicates a high level of generalizability -- a measure of the model's capacity to be applied to predict other sample sets -- in our case, flood inundation in Denver.
 
-It gives the model confidence in moving to the final stage of the project -- applying Calgary's flood inundation predictions to the city of Denver. 
+Subsequently plotting a histogram of the accuracy for each fold points out a high level of generalizability.
 
 ```{r cv_hist, warning = FALSE, message = FALSE}
 
@@ -939,8 +824,6 @@ ggplot(as.data.frame(inundFit$resample), aes(Accuracy)) +
 # 5. Map Predictions
 
 **The Moment We've Been Waiting For**
-
-We ran a lot of tests on our model, and are probably ready to use it for a few predictions, now. 
 
 ## 5.1 Predictions for Calgary
 
