@@ -17,7 +17,6 @@ output:
 
 
 
-
 # 1. Introduction
 
 The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta, Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated, and the flooding caused over $5 billion in property damage.^1^
@@ -44,7 +43,7 @@ We chose Denver, Colorado as our comparison city for estimating flooding because
 
 ## Hypothesis
 
-We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images] (https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow based on elevation.
+We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images] (https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow and accumulation based on elevation and slope.
 
 
 ## Project Structure
@@ -73,10 +72,12 @@ This project follows the workflow below, which the following sections describe i
 6. Conclude with Closing Thoughts
 
 
+_The link to our video can be found at: ..._
 
 
-## 1.1 Setup
+## 1 Setup
 
+Load libraries, set working directories, write map and plot themes, and call-in files. 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
@@ -155,8 +156,6 @@ greys <- c("#ECEBF1", "#D3D3D9", "#B0B0B3", "#9C9C9E", "#7F7F80", "#656666")
 neutrals <- c("#FDF4E9", "#FFEFDE", "#F6D7B2", "#D6B28B", "#A58565")
 
 ```
-
-## 1.2 Load Data
 
 ```{r load_data, results = "hide"}
 denver_boundary <-read_sf("Denver/Processed/LUEM_Asgn3_Denver/NewData/denver_bound/denver_bound.shp")
@@ -334,18 +333,29 @@ The Calgary flood inundation raster data we worked with contained four values: i
 ```{r calgary stream dist map}
 
 ggplot() +
-  geom_sf(data=calg_dat, aes(fill=factor(ntile(streamdist_min,4))), 
-            colour=NA) +
-  scale_fill_manual(values = yellows,
-                    labels=as.character(quantile(calg_dat$streamdist_min,
-                                                 c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+  geom_sf(data=calg_dat, aes(fill=streamdist_min), color = NA) +
+  scale_fill_gradient(low = yellows[1], high = "#6E5321",
                     name = "Distance\n(Quantile Breaks\nin Meters)") +
   labs(title="Distance from Rivers in Calgary",
       subtitle="Based on Calgary Hydrology Data",
       caption = "Source: data.calgary.ca") +
   mapTheme
 
+
+                    
+ggplot() +
+  geom_sf(data=calg_dat, aes(fill=factor(ntile(streamdist_min, 4))), 
+            colour=NA) +
+  scale_fill_manual(values = yellows,
+                    labels= as.character(round(quantile(calg_dat$streamdist_min,
+                                                 c(0.2,.4,.6,.8),
+                                                 na.rm=T))),
+                    name = "Distance\n(Quantile Breaks\nin Meters)") +
+  labs(title="Distance from Rivers in Calgary",
+      subtitle="Based on Calgary Hydrology Data",
+      caption = "Source: data.calgary.ca") +
+  mapTheme                    
+                    
 ```
 
 We used the distance accumulation tool to create a raster layered where each pixel was equal to its distance from a river. We then set each fishnet cell in the resulting table equal to the minimum distance to a river in that cell. We thought it best to over-sample cells near rivers rather than under-sample, because our model is based on riverine flooding.
@@ -357,9 +367,9 @@ ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(flowac_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = blues,
-                    labels=as.character(quantile(calg_dat$flowac_mean,
+                    labels= as.character(round(quantile(calg_dat$flowac_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+                                                 na.rm=T))),
                     name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
   labs(title="Precipitation Flow Accumulation in Calgary",
        subtitle="Based on Calgary Elevation Data",
@@ -377,11 +387,11 @@ ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(pervious_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = greens,
-                    labels=as.character(quantile(calg_dat$pervious_mean,
+                    labels= as.character(round(quantile(calg_dat$pervious_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Permeable\nSurface\n(Quantile\nBreaks)") +
-  labs(title="Permeable Surface in Calgary",
+                                                 na.rm=T), 2)),
+                    name = "Pervious\nSurface\n(Quantile\nBreaks)") +
+  labs(title="Pervious Surface in Calgary",
        subtitle="Based on Calgary Land Cover Data",
         caption = "Source: data.calgary.ca") +
   mapTheme
@@ -397,13 +407,14 @@ ggplot() +
   geom_sf(data=calg_dat, aes(fill=factor(ntile(elevation_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = neutrals,
-                    labels=as.character(quantile(calg_dat$elevation_mean,
-                                                 c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Mean Elevation\n(Quantile Breaks\nin Meters)") +
+                    labels= as.character(round(quantile(calg_dat$elevation_mean,
+                                                         c(0.2,.4,.6,.8),
+                                                         na.rm=T), 2)),
+                    name = "Mean Elevation\n(Quantile Breaks\nCategorical)") +
   labs(title="Elevation in Calgary",
         caption = "Source: CPLN 675") +
-  mapTheme
+    mapTheme
+
 
 ```
 
@@ -426,10 +437,9 @@ ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(streamdist_min,4))), 
             colour=NA) +
   scale_fill_manual(values = yellows,
-                    labels=as.character(quantile(denver_dat$streamdist_min,
-                                                 c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Distance\n(Quantile Breaks\n in Metres)") +
+                    labels= as.character(round(quantile(denver_dat$streamdist_min,                                                    c(0.2,.4,.6,.8),
+                                        na.rm=T), 2)),
+     name = "Distance\n(Quantile Breaks\n in Metres)") +
   labs(title="Distance from Rivers in Denver",
        subtitle="Based on Denver Hydrology Data",
         caption = "Source: Denver Open Data Catalog") +
@@ -444,9 +454,9 @@ ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(flowac_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = blues,
-                    labels=as.character(quantile(denver_dat$flowac_mean,
+                    labels= as.character(round(quantile(denver_dat$flowac_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+                                                 na.rm=T))),
                     name = "Mean Flow\nAccumulation\n(Quantile Breaks)") +
   labs(title="Precipitation Flow Accumulation in Denver",
        subtitle="Based on Denver Elevation Data",
@@ -462,9 +472,9 @@ ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(pervious_mean,4))), 
             colour=NA) +
   scale_fill_manual(values = greens,
-                    labels=as.character(quantile(denver_dat$pervious_mean,
+                    labels= as.character(round(quantile(denver_dat$pervious_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
+                                                 na.rm=T), 2)),
                     name = "Permeable\nSurface\n(Quantile\nBreaks)") +
   labs(title="Permeable Surface in Denver",
        subtitle="Based on Denver Land Cover Data",
@@ -477,11 +487,11 @@ ggplot() +
 ggplot() +
   geom_sf(data=denver_dat, aes(fill=factor(ntile(elevation_mean,4))), 
             colour=NA) +
-scale_fill_manual(values = blues,
-                    labels=as.character(quantile(denver_dat$elevation_mean,
+  scale_fill_manual(values = neutrals,
+                    labels= as.character(round(quantile(denver_dat$elevation_mean,
                                                  c(0.2,.4,.6,.8),
-                                                 na.rm=T)),
-                    name = "Elevation in Metres\n(Quantile\nBreaks)") +
+                                                 na.rm=T))),
+                    name = "Mean Elevation\n(Quantile Breaks\nCategorical)") +
   labs(title="Elevation in Denver",
         caption = "Source: webgis.com") +
   mapTheme
@@ -501,8 +511,9 @@ calg_PlotVariables <- calg_dat %>%
   as.data.frame() %>%
     dplyr::select(inund_sum, pervious_mean, elevation_mean, flowac_mean_log, streamdist_min_log) %>% 
     pivot_longer(cols = -inund_sum)
-
 ```
+
+
 
 The violin plots below shows how each variable is spread across 0/1 values of inundation. They visually indicate the relationship between the variables we assumed would cause / correlate to flooding, as a function of how we processed them with relation to Calgary's fishnet. For instance:
 
@@ -605,7 +616,7 @@ A logistic regression on the first model displays the following results:
 * In our next step, we exponentiate the coefficients to interpret their relationship to the likelihood of flood inundation.
 
 
-```{r firstModel}
+```{r firstModel, warning=FALSE}
 inundModel <- glm(inund_sum ~ ., 
                     family="binomial"(link="logit"), data = inundTrain %>%
                                                             as.data.frame() %>%
@@ -621,7 +632,7 @@ The exponentiated coefficients of the first model exhibit the following relation
 * All else equal, a unit increase in Distance to Stream _reduces_ the odds of flood inundation by 41.1%
 
 
-``` {r firstModel coefficients}
+``` {r firstModel coefficients, warning=FALSE, results="hide"}
 
 ## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
 ## - or + sign indicates associated increase or decrease
@@ -655,7 +666,7 @@ We eliminate Land Porosity, which did not exhibit statistical significance in ou
 * The AIC is very marginally lower than our first model, at **1259.2**.
 
 
-```{r secondModel}
+```{r secondModel, warning=FALSE, results="hide"}
 
 inundTrain_2 <- calg_dat[ trainIndex,] %>% 
   dplyr::select(-flowac_mean, -streamdist_min, -pervious_mean)
@@ -680,7 +691,7 @@ The exponentiated coefficients of the second model are not very different from t
 * All else equal, a unit change in Distance to Stream _reduces_ the odds of flood inundation by 40.5%
 
 
-``` {r secondModel coefficients}
+``` {r secondModel coefficients, warning=FALSE, results="hide"}
 
 ## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
 ## - or + sign indicates associated increase or decrease
@@ -712,7 +723,7 @@ But what happens if we use the non-adjusted variables in a logit model?
 Does it mess with our coefficient interpretation?
 
 
-```{r thirdModel}
+```{r thirdModel, warning=FALSE, results="hide"}
 
 inundTrain_3 <- calg_dat[ trainIndex,] %>% 
   dplyr::select(-flowac_mean_log, -streamdist_min_log)
@@ -742,7 +753,7 @@ Also, since this project is less about statistical significance and more about e
 
 We're glad (lol) we ran these options, but we're going to stick with our original model for the rest of the project ¯\_(ツ)_/¯
 
-``` {r thirdModel coefficients}
+``` {r thirdModel coefficients, warning=FALSE, results="hide"}
 
 ## % change in Y for unit change in X = [(exponent (coefficient of X) - 1)] * 100
 ## - or + sign indicates associated increase or decrease
@@ -763,9 +774,11 @@ inundModel3_coefficients %>%
 
 ## 3.3 Model Validation
 
+
 **So, Is My House Going to Flood?**
 
 Well, it depends on where you live.
+
 
 The plots below illustrate a distribution of predicted probabilities, based on the training and test sets. 
 
@@ -812,15 +825,8 @@ To test the model's prediction accuracy, we created a confusion matrix from whic
 If we assume a probability cutoff threshold of 50%, our confusion matrix gives us an accuracy of **0.909**, with the following sensitivity and specificity results:
 
 
-**Sensitivity & Specificity Analysis**
-_Predicted vs. Reference Values, 50% Cutoff_
 
--------------------
-|   | 0    | 1    |
--------------------
-| 0 | 1389 | 91   |
-| 1 | 55   | 75   |
--------------------
+**Sensitivity & Specificity Analysis**: Predicted vs. Reference Values, 50% Cutoff
 
 
 * It has predicted 0 as 0, i.e. a _True Negative_, 1389 times
@@ -828,11 +834,12 @@ _Predicted vs. Reference Values, 50% Cutoff_
 * It has predicted 1 as 0, i.e. a _False Positive_, 55 times
 * It has predicted 1 as 1, i.e. a _True Positive_, 75 times
 
+
 Overall, the model's true positive rate, i.e., the proportion of 1s predicted as 1s indicates its _sensitivity_, which in this case is almost twice as much as the number of 1s falsely predicted as 0s. The model's true negative rate, i.e., the proportion of 0s accurately predicted as 0s is about 15 times greater than the number of 0s falsely predicted as 1s, indicating the model's _specificity_.
 
 It has an error rate of about 10% as derived from the accuracy value (Error = Accuracy - 1), which is demonstrated by the fact that the model's 146 erroneous predictions are only a small fraction of its 1464 accurate predictions.
 
-```{r confusion_matrix}
+```{r confusion_matrix, warning=FALSE}
 
 testProbs$predClass  = ifelse(testProbs$pred > .5 ,1,0)
 
@@ -843,33 +850,9 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 
 We experimented with the threshold cutoff to check how the model would respond, and found that:
 
-The accuracy of a model with with a 75% threshold cutoff is a little higher than the original model with a 50% cutoff, at **0.917**
-However, it contains slightly different levels of False Positive and False Negative predictions:
+The accuracy of a model with with a **75%** threshold cutoff is a little higher than the original model with a 50% cutoff, at **0.917**. However, it contains slightly different levels of False Positive and False Negative predictions.
 
-
-**Sensitivity & Specificity Analysis**
-_Predicted vs. Reference Values, 75% Cutoff_
-
--------------------
-|   | 0    | 1    |
--------------------
-| 0 | 1440 | 129  |
-| 1 | 4    | 37   |
--------------------
-
-
-Similarly, the accuracy of a model with a 25% cutoff is only marginally higher than the original model at **0.903**, but it also exhibits a lower specificity:
-
-
-**Sensitivity & Specificity Analysis**
-_Predicted vs. Reference Values, 25% Cutoff_
-
--------------------
-|   | 0    | 1    |
--------------------
-| 0 | 1342 | 53   |
-| 1 | 102  | 113  |
--------------------
+Similarly, the accuracy of a model with a **25%** cutoff is only marginally higher than the original model at **0.903**, but it also exhibits a lower specificity.
 
 
 ```{r confusion_matrix_75_25, message = FALSE, warning = FALSE}
@@ -889,6 +872,7 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 ```
 
 ## 4.2 ROC Curve
+
 
 **Run, These Are No Geese!!**
 
@@ -913,13 +897,15 @@ auc(testProbs$obs, testProbs$pred)
 ```
 
 
+
 ## 4.3 Cross Validation
+
 
 **It's Accurate but is it Generalizable?**
 
 The following section checks the accuracy of our predictions across 100 randomly generated test sets, to gauge its applicability in predicting Denver's chances of flood inundation.
 
-On average, the prediction accuracy across all 100 folds is 92%.
+On average, the prediction accuracy across all 100 folds is **92%**.
 
 
 ```{r k_fold, warning = FALSE, message = FALSE}
@@ -986,9 +972,10 @@ calg_pred <-
                       labels=as.character(quantile(calg_pred$allPredictions,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                      name="Predicted\nProbabilities(%)\n(Quantile\nBreaks)") +
+                      name="Predicted\nProbabilities(%)\n(Grouped in\nQuantile\nBreaks)") +
   mapTheme +
-  labs(title="Predicted Probability of Flood Inundation in Calgary")
+  labs(title="Predicted Probability of Flood Inundation in Calgary",
+       subtitle = "Based on a Logistic Regression Model")
 ```
 
 Let’s map it again with the already calculated inundation types overlaid.
@@ -1000,7 +987,7 @@ Let’s map it again with the already calculated inundation types overlaid.
                     labels=as.character(quantile(calg_pred$allPredictions,
                                                  c(.2,.4,.6,.8),
                                                  na.rm=T)),
-                    name="Predicted\nProbabilities(%)\n(Quintile\nBreaks)") +
+                    name="Predicted\nProbabilities(%)\n(Grouped in\nQuintile\nBreaks)") +
   geom_sf(data=calg_pred  %>% 
                filter(inund_sum == 1), 
                fill="#EDBA46", alpha=0.9, colour=NA) +
@@ -1064,11 +1051,10 @@ denver_pred <-
                       labels=as.character(quantile(denver_pred$allPredictions_denver,
                                                  c(0.2,.4,.6,.8),
                                                  na.rm=T)),
-                      name="Predicted\nProbabilities(%)\n(Quantile\nBreaks)") +
+                      name="Predicted\nProbabilities(%)\n(Grouped in\nQuantile\nBreaks)") +
   mapTheme +
   labs(title="Predicted Probability of Flood Inundation in Denver",
-        subtitle="Based on a Logistic Regression Model trained on data from Calgary\n",
-        caption = "Source: blah blah blah")
+        subtitle="Based on a Logistic Regression Model trained on data from Calgary\n")
 
   
 ```
