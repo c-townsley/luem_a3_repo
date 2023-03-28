@@ -781,6 +781,9 @@ The plots below illustrate a distribution of predicted probabilities, based on t
 
 * The second plot is a measure of how well our data is predicting probabilities for "inundation" (1s) vs "no inundation" (0s), where the vertical line represents a 0.5 probability of inundation. In this case the values reflecting not inundated areas are clustered closer to zero, indicating a lower probability for inundation overall.
 
+But, are these predictions accurate?
+
+
 
 ```{r predict_first}
 classProbs <- predict(inundModel, inundTest, type="response")
@@ -875,7 +878,10 @@ The Receiver Operating Characteristic (ROC) curve for our original model with a 
 
 It shows the trade-off between Sensitivity and Specificity in our test set against a random classifier where True Positive = False Positive (the light grey diagonal). In this case, the variation of the ROC curve away from the random classifier line, toward the top-right corner indicates a high rate of model accuracy.
 
-This is further confirmed by calculating the area under the curve as **0.939**, which confirms that the model is able to predict flood inundation with a 94% accuracy. 
+This is further confirmed by calculating the area under the curve as **0.939**, which confirms that the model is able to predict flood inundation in Calgary with a 94% accuracy. 
+
+
+But how well would it predict on other datasets?
 
 
 ```{r roc_curve, message = FALSE, warning = FALSE}
@@ -920,6 +926,7 @@ inundFit
 
 #inundFit is our model trained to predict using the binomial logistic regression, or glm, method. 
 ```
+
 Subsequently plotting a histogram of the accuracy for each fold allows us to trace its generalizability.
 The plot points out that a large number of folds (i.e., values from the "Resample" column) are clustered at high accuracy values. 
 This indicates a high level of generalizability -- a measure of the model's capacity to be applied to predict other sample sets -- in our case, flood inundation in Denver.
@@ -994,7 +1001,7 @@ Let’s map it again with the already calculated inundation types overlaid.
        subtitle="Yellow marks areas with observed 'inundation', \nall other taken as 'not inundated' for the purpose of binary regression modeling")
 ```
 
-Looks like our predicted and observed values are very close!
+Looks like our predicted and observed inundation values are very close!
 
 How are the Sensitivity and Specificity values laid out on the map of Calgary? 
 
@@ -1105,7 +1112,10 @@ It is also quicker than a more detailed, hydraulic model, to generate spatial sc
 
 **Next Steps**
 
-If we were to run through this project again (we won't, but _if_ we were), we might do a few things differently:
+If we were doing this for **$$**, we could send to Denver municipal government with policy recommendations for zoning and flood response in low-lying areas close to streams in Denver, subject to further hydraulic modeling.
+
+
+And if we were to run through this project again (we won't, but _if_ we were), we might do a few things differently:
 
 * Find a way to integrate land porosity through its run-off potential values, rather than use a simplified binary classification based on urbanized/non-urbanized land.
 
@@ -1114,6 +1124,8 @@ If we were to run through this project again (we won't, but _if_ we were), we mi
 * Run through the similarities and differences between the datastes for our two cities from the get go. We struggled for a while with a strange prediction of the Calgary dataset on Denver, and eventually learnt that:
 ** By not ensuring both datasets had variables in the same unit (either feet or metres), we were confusing the model
 ** By entering Elevation data as absolute numbers instead of in discrete bins, we were training the model on Calgary's relatively high range of elevations (900-1500 metres), which then read Denver's elevations (all below 900 metres), as completely inundated. 
+
+* Get more familiar with how our datasets speak to each other, and to the model, from the get go, because that was a steep learning curve for us.
 
 
 For now, we're going to get some sleep.
