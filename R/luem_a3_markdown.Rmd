@@ -1,6 +1,6 @@
 ---
 title: "Estimating a Flood Inundation Probability Map"
-subtitle: "CPLN 675_Assignment3"
+subtitle: "CPLN 675 Assignment3"
 author: "Riddhi Batra & Charlie Townsley"
 date: "`r Sys.Date()`"
 output: 
@@ -46,7 +46,7 @@ We chose Denver, Colorado as our comparison city for estimating flooding because
 
 ## Hypothesis
 
-We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images] (https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow based on elevation.
+We began by thinking of which factors could influence and/or correlate with flood inundation. Based on [aerial images](https://www.servirglobal.net/Portals/0/Documents/Articles/ISERV%20Images/ISERV%20Calgary_flood%20V3.jpg) from the Calgary flood of 2013, we hypothesized that the probability of a grid cell in our model to flood is a function of proximity to rivers, elevation, land cover permeability, and where water has a natural tendency to flow based on elevation.
 
 
 ## Project Structure
@@ -54,19 +54,19 @@ We began by thinking of which factors could influence and/or correlate with floo
 This project follows the workflow below, which the following sections describe in detail:
 
 1. Setup
-  + Gather open data from Calgary and Denver
-  + Process open data in ArcGIS to get our features of interest.
+     + Gather open data from Calgary and Denver
+     + Process open data in ArcGIS to get our features of interest.
 
 2. Create Fishnets and Wrangle data
-  + Create a fishnet shapefile in R for each city
-  + Use the Zonal Statistics as Table tool in ArcGIS to transform raster features to fishnet cell-level information
-  + Join zonal statistics tables with fishnet shapefiles in R
-  + Explore data in R
+     + Create a fishnet shapefile in R for each city
+     + Use the Zonal Statistics as Table tool in ArcGIS to transform raster features to fishnet cell-level information
+     + Join zonal statistics tables with fishnet shapefiles in R
+     + Explore data in R
 
 3. Run Logistic Regressions
-  + Train model on Calgary Data
-  + Refine model
-  + Validate model
+     + Train model on Calgary Data
+     + Refine model
+     + Validate model
   
 4. Interpretation
 
