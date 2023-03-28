@@ -1038,6 +1038,8 @@ denver_pred <-
   cbind(denver_dat_log, allPredictions_denver) %>% 
   mutate(allPredictions_denver = round(allPredictions_denver * 100)) 
 
+
+
 ```
 
        
