@@ -17,47 +17,24 @@ output:
 
 
 
-# 1. Introduction
+# Introduction
 
 
-The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. 
+The goal of this project is to use existing flood inundation and environmental data from the city of Calgary in Alberta, Canada, to build a predictive model that estimates flooding in a comparison city with similar characteristics (Denver, Colorado).
 
+In the United States, floods are responsible for roughly $8 billion in damage every year.
 
-## Project Structure
+Predictive flood modeling is important for helping cities plan, prepare for, and respond to flood events.
 
-This project follows the workflow below, which the following sections describe in detail:
-
-1. Setup
-     + Gather open data from Calgary and Denver
-     + Process open data in ArcGIS to get our features of interest.
-
-
-2. Create Fishnets and Wrangle data
-     + Create a fishnet shapefile in R for each city
-     + Use the Zonal Statistics as Table tool in ArcGIS to transform raster features to fishnet cell-level information
-     + Join zonal statistics tables with fishnet shapefiles in R
-     + Explore data in R
-
-
-3. Run Logistic Regressions
-     + Train model on Calgary Data
-     + Refine model
-     + Validate model
-  
-
-4. Interpretation
-
-5. Map Predictions
-
-6. Conclude with Closing Thoughts
+This type of process is different from basic site suitability studies or detailed hydraulic modeling because it quickly maps relative risk. Such "general linear models" can help city planning departments quickly and cheaply prioritize disaster preparation and response.
 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
-#knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
+knitr::opts_knit$set(root.dir = "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/LUEM_Assignment3_FloodInundationProbability/Data") #Charlie's directory
 
-knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
+#knitr::opts_knit$set(root.dir = "C:/Users/rids2/PennO365/Townsley, Charlie - LUEM_Assignment3_FloodInundationProbability/Data") #Riddhi's Directory
 
 rm(list=ls())
 
@@ -138,10 +115,8 @@ calgary_boundary <- read_sf("Calgary/Raw/CALGIS_CITYBOUND_LIMIT/CALGIS_CITYBOUND
 ```
 
 
-# 2. Fishnets and Data Wrangling
+# Fishnets
 
-
-## 2.1 Create Fishnets
 
 ```{r create_fishnets_calgary, results = "hide"}
 
@@ -186,7 +161,7 @@ ggplot()+
 ```
 
 
-## 2.2 Feature Engineering: Arc to R
+## Feature Engineering: Arc to R
 
 After creating fishnets for Calgary and Denver in R, we exported them as shapefiles for processing in ArcGIS. where we created tables of zonal statistics from relevant raster data.
 
@@ -274,12 +249,6 @@ denver_dat <- denver_fishnet %>%
 ### Calgary
 
 Below are the features we created for Calgary:
-
-* Flood inundation
-* Pervious and impervious landcover
-* Elevation
-* Flow accumulation
-* Distance to river
 
 
 ```{r calgary inundation map}
@@ -443,7 +412,7 @@ ggplot() +
 ```
 
 
-## 2.4 What is our Data Telling Us?
+## What is our Data Telling Us?
 
 
 We had to log adjust our Flow Accumulation and Distance to Stream variables to compensate the wide range of outliers in the data set. 
@@ -480,47 +449,6 @@ ggplot(calg_PlotVariables) +
 ```
 
 
-**How many fishnet cells in Calgary are inundated?**
-
-
-``` {r fishnet cell calcs, results = "hide"}
-
-calg_inund_fishnet <- calg_dat %>% 
-  filter(inund_sum == 1)
-
-no_fishnets <-(509/5373)*100
-
-
-```
-
-
-# 3. Logistic Regressions
-
-## 3.1 Test, Train, Correlate, Regress: Model 1
-
-
-
-
-```{r training_set, results = "hide"}
-
-set.seed(3456)
-
-trainIndex <- createDataPartition(calg_dat$elevation_mean, p = .70,
-                                  list = FALSE,
-                                  times = 1) 
-
-inundTrain <- calg_dat[ trainIndex,] %>% 
-  dplyr::select(-flowac_mean, -streamdist_min)
-
-inundTest  <- calg_dat[-trainIndex,]%>% 
-  dplyr::select(-flowac_mean, -streamdist_min)
-
-##the sets are randomly generated
-##p=0.70 indicates the 70/30 partition
-```
-
-## Correlation Test
-
 Before running regression models, we checked the correlation values of our variables and found they did not contain high levels of multi-collinearity.
 
 ``` {r correlation matrix, results = "hide"}
@@ -542,15 +470,45 @@ ggcorrplot(calg_matrix, method="square", colors = c("#73BBBF", "#FDF4E9", "#92AF
 
 ```
 
+
+``` {r fishnet cell calcs, results = "hide"}
+
+calg_inund_fishnet <- calg_dat %>% 
+  filter(inund_sum == 1)
+
+no_fishnets <-(509/5373)*100
+
+
+```
+
+
+# Logistic Regressions
+
+```{r training_set, results = "hide"}
+
+set.seed(3456)
+
+trainIndex <- createDataPartition(calg_dat$elevation_mean, p = .70,
+                                  list = FALSE,
+                                  times = 1) 
+
+inundTrain <- calg_dat[ trainIndex,] %>% 
+  dplyr::select(-flowac_mean, -streamdist_min)
+
+inundTest  <- calg_dat[-trainIndex,]%>% 
+  dplyr::select(-flowac_mean, -streamdist_min)
+
+##the sets are randomly generated
+##p=0.70 indicates the 70/30 partition
+```
+
 We created 3 logistic regression models.
 
 The first model incorporated all our original variables.
 
-* It displayed high statistical significance for all values except Land Porosity. 
+All the variables made the model better, except for land porosity.
 
-* The AIC was **1259.8**
-
-* The relationships that came forward were, with all else considered equal:
+We found that:
 
 ** A unit increase in Land Porosity _reduces_ the chances of inundation by 30%
 
@@ -559,8 +517,6 @@ The first model incorporated all our original variables.
 ** A unit change in Flow Accumulation _increases_ the odds of flood inundation by 14%
 
 ** A unit increase in Distance to Streams _reduces_ the odds of flood inundation by 41%
-
-
 
 
 ```{r firstModel, warning=FALSE}
@@ -591,7 +547,7 @@ inundModel_coefficients %>%
 ```
 
 
-## 3.2 Regress: Model 2 & 3
+## Regress: Model 2 & 3
 
 
 **Model 2: Does 'Land Porosity' matter?**
@@ -685,7 +641,7 @@ inundModel3_coefficients %>%
 ```
 
 
-## 3.3 Model Validation
+## Model Validation
 
 
 **So, Is My House Going to Flood?**
@@ -727,17 +683,11 @@ ggplot(testProbs, aes(x = pred, fill=as.factor(obs))) +
 ```
 
 
-# 4. Confusion, Indeed
-
-## 4.1 Confusion Metrics
+# Confusion Metrics
 
 To test the model's prediction accuracy, we created a confusion matrix to gauge its margin of error.
 
 * Assuming a probability cutoff threshold of **50%**, our matrix gives us an accuracy of **91%**.
-
-** Overall, the model's true positive rate - its _sensitivity_ - is almost twice as much as its false positive rate. 
-
-** The model's true negative rate, is about 15 times greater than its false negative rate, indicating the model's high _specificity_.
 
 
 ```{r confusion_matrix, warning=FALSE}
@@ -748,10 +698,6 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
                        data = as.factor(testProbs$predClass), 
                        positive = "1")
 ```
-
-We also experimented with the threshold cutoff to check how the model would respond, and found minor changes in shifting the cutoff to 75% or 25%. 
-
-Overall, the 50% threshold gave the best balance of accuracy, sensitivity, and specificity. 
 
 
 ```{r confusion_matrix_75_25, message = FALSE, warning = FALSE, results = "hide"}
@@ -771,12 +717,9 @@ caret::confusionMatrix(reference = as.factor(testProbs$obs),
 
 ```
 
-## 4.2 ROC Curve
+## ROC Curve
 
-
-**Run, These Are No Geese!!**
-
-The Receiver Operating Characteristic (ROC) curve, which shows the trade-off between Sensitivity and Specificity in our test set, confirms that the model is able to predict flood inundation in Calgary with a **94%** accuracy. 
+The Receiver Operating Characteristic (ROC) curve confirms that the model is able to predict flood inundation in Calgary with a **94%** accuracy. 
 
 But how well would it predict on other datasets?
 
@@ -795,18 +738,14 @@ auc(testProbs$obs, testProbs$pred)
 ```
 
 
-
-## 4.3 Cross Validation
-
-
-**It's Accurate but is it Generalizable?**
+## Cross Validation
 
 
 We checked the prediction performance of our model across 100 randomly generated test sets.
 
 On average, the prediction accuracy across all these test sets is 92%.
 
-A histogram of this shows that all predictions are clustered at high accuracy values, indicating a high level of **generalizability**, that is, a measure of the model's capacity to be applied to predict other sample sets -- which in our case, made us more confident it would work for Denver.
+A histogram of this shows a high level of **generalizability**, that is, a measure of the model's capacity to be applied to predict other sample sets -- which in our case, made us more confident it would work for Denver.
 
 
 
@@ -839,12 +778,7 @@ ggplot(as.data.frame(inundFit$resample), aes(Accuracy)) +
 ```
 
 
-# 5. Map Predictions
-
-**The Moment We've Been Waiting For**
-
-
-## 5.1 Predictions for Calgary
+# Mapping Predictions
 
 Mapping our predicted inundation values in Calgary against observed inundation values showed us a good fit!
 
@@ -899,7 +833,7 @@ calg_pred <-
 
 **Errors on Map**
 
-An error map spatially laid out our false negatives and positives, leads us to think we may have over-predicted flooding in low elevation areas, and, by initially classifiying land porosity as a binary of land cover, we may have reduced the nuances in soil run-off and flooding. 
+An error map spatially laid out our false negatives and positives. IT leads us to think we may have over-predicted flooding in low elevation areas, and, by initially classifiying land porosity as a binary of land cover, we may have reduced the nuances in soil run-off and flooding.
 
 
 ```{r error_map, warning = FALSE, message= FALSE}
@@ -918,10 +852,7 @@ calg_pred %>%
 ```
 
 
-## 5.2 Predictions for Denver
-
-
-**Prediction Defense**
+## Predictions for Denver
 
 
 * Overall, our model has a high level of accuracy and generalizability.
@@ -989,10 +920,8 @@ denver_hydro <- read_sf("Denver/Raw/streams/streams.shp")
 
 
 
-# 6. Conclusion
+# Conclusion
 
-
-**Next Steps**
 
 In conclusion, if we were doing this for **$$**, we could send to Denver municipal government with policy recommendations for zoning and flood response in low-lying areas close to streams in Denver, subject to further hydraulic modeling.
 
