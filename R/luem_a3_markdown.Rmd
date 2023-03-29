@@ -19,7 +19,7 @@ output:
 
 # 1. Introduction
 
-_The link to our video can be found at: ..._
+_The link to our video can be found [here](https://www.youtube.com/watch?v=1c6yY98HiN4)._
 
 The purpose of this project is to use existing flood inundation and environmental data from one city to build a predictive model that estimates flooding in a comparison city with similar characteristics. Our model is trained and validated on the city of Calgary, in Alberta, Canada. The city experienced record flooding in 2013 when heavy rainfall met with melting snowpack in the Rocky Mountains. Nearly 80,000 people were evacuated, and the flooding caused over $5 billion in property damage.^1^
 
