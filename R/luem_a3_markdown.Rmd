@@ -506,7 +506,7 @@ calg_PlotVariables <- calg_dat %>%
 
 ## Data Spread
 
-The violin plots below shows how each variable is spread across 0/1 values of inundation. They visually indicate the relationship between the variables we assumed would cause / correlate to flooding, as a function of how we processed them with relation to Calgary's fishnet. For instance:
+The violin plots below show how each variable is spread across 0/1 values of inundation. They visually indicate the relationship between the variables we assumed would cause / correlate to flooding, as a function of how we processed them with relation to Calgary's fishnet. For instance:
 
 * Fishnet cells at lower elevations are more inundated than those at higher elevations.
 
